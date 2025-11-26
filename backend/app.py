@@ -134,12 +134,13 @@ def recommend():
 @app.route('/')
 def home():
     frontend_dir = os.path.join(os.path.dirname(__file__), '../frontend')
-    return send_from_directory(frontend_dir, 'index.html')
+    return send_from_directory(frontend_dir, 'index_new.html')
 
 @app.route('/style.css')
+@app.route('/style_new.css')
 def style_css():
     frontend_dir = os.path.join(os.path.dirname(__file__), '../frontend')
-    return send_from_directory(frontend_dir, 'style.css')
+    return send_from_directory(frontend_dir, 'style_new.css')
 
 @app.route('/app.js')
 def app_js():
