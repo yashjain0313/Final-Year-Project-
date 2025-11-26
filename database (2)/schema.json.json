@@ -1,0 +1,67 @@
+{
+  "database": "AgroSmart",
+  "tables": {
+    "users": {
+      "columns": {
+        "user_id": "INT, PK, AUTO_INCREMENT",
+        "username": "VARCHAR(50), UNIQUE, NOT NULL",
+        "email": "VARCHAR(100), UNIQUE, NOT NULL",
+        "password_hash": "VARCHAR(255), NOT NULL",
+        "full_name": "VARCHAR(100), NULL",
+        "role": "ENUM('admin','farmer','guest'), DEFAULT 'farmer'",
+        "created_at": "TIMESTAMP, DEFAULT CURRENT_TIMESTAMP",
+        "updated_at": "TIMESTAMP, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+      }
+    },
+    "crops": {
+      "columns": {
+        "crop_id": "INT, PK, AUTO_INCREMENT",
+        "crop_name": "VARCHAR(100), NOT NULL",
+        "type": "VARCHAR(50), NULL",
+        "optimal_n": "INT, NULL",
+        "optimal_p": "INT, NULL",
+        "optimal_k": "INT, NULL",
+        "optimal_ph": "FLOAT, NULL",
+        "optimal_temperature": "FLOAT, NULL",
+        "optimal_humidity": "FLOAT, NULL",
+        "optimal_rainfall": "FLOAT, NULL",
+        "created_at": "TIMESTAMP, DEFAULT CURRENT_TIMESTAMP",
+        "updated_at": "TIMESTAMP, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+      }
+    },
+    "crop_yield": {
+      "columns": {
+        "id": "INT, PK, AUTO_INCREMENT",
+        "user_id": "INT, FK -> users(user_id)",
+        "crop_name": "VARCHAR(50), NULL",
+        "area": "FLOAT, NULL",
+        "production": "FLOAT, NULL",
+        "yield": "FLOAT, NULL",
+        "created_at": "TIMESTAMP, DEFAULT CURRENT_TIMESTAMP"
+      }
+    },
+    "crop_recommendation": {
+      "columns": {
+        "id": "INT, PK, AUTO_INCREMENT",
+        "nitrogen": "FLOAT",
+        "phosphorus": "FLOAT",
+        "potassium": "FLOAT",
+        "temperature": "FLOAT",
+        "humidity": "FLOAT",
+        "ph": "FLOAT",
+        "rainfall": "FLOAT",
+        "recommended_crop": "VARCHAR(50)",
+        "created_at": "TIMESTAMP, DEFAULT CURRENT_TIMESTAMP"
+      }
+    },
+    "disease_detection": {
+      "columns": {
+        "id": "INT, PK, AUTO_INCREMENT",
+        "image_path": "VARCHAR(255)",
+        "predicted_disease": "VARCHAR(50)",
+        "confidence": "FLOAT",
+        "created_at": "TIMESTAMP, DEFAULT CURRENT_TIMESTAMP"
+      }
+    }
+  }
+}

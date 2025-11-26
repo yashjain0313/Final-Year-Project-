@@ -1,0 +1,21 @@
+<section id="disease-detection" class="section">
+  <div class="container">
+    <div class="section-header">
+      <h2>Crop Disease Detection</h2>
+      <p>Upload a leaf image to detect crop diseases using AI</p>
+    </div>
+    <div class="disease-detection-container">
+      <form id="diseaseForm" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="leafImage">Leaf Image</label>
+          <input type="file" id="leafImage" name="leafImage" accept="image/*" required>
+        </div>
+        <button type="submit" class="btn btn--primary btn--full-width">
+          <i class="fas fa-virus"></i>
+          Detect Disease
+        </button>
+      </form>
+      <div class="disease-result" id="diseaseResult"></div>
+    </div>
+  </div>
+</section>
