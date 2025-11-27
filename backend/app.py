@@ -15,7 +15,15 @@ from torchvision import models
 import torch.nn as nn
 import json
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../frontend', static_url_path='')
+
+@app.route('/')
+def serve_index():
+    return send_from_directory(app.static_folder, 'index_new.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory(app.static_folder, path)
 
 def load_model():
     model_path = os.path.join(os.path.dirname(__file__), '../data_ml/models/crop_recommendation/crop_recommendation_model.pkl')
@@ -277,6 +285,128 @@ def detect_disease():
         import traceback
         print('Exception in /api/disease:', traceback.format_exc())
         return jsonify({'error': f'Detection failed: {str(e)}'}), 500
+
+
+# ============================================
+# DISEASE PROGRESSION DETECTION API
+# ============================================
+
+# Initialize Disease Progression API
+disease_progression_api = None
+try:
+    from disease_progression_api import DiseaseProgressionAPI
+    
+    # Paths to trained model
+    model_path = os.path.join(os.path.dirname(__file__), '../data_ml/notebooks/disease_progression/models/disease_progression_final.h5')
+    class_names_path = os.path.join(os.path.dirname(__file__), '../data_ml/notebooks/disease_progression/models/class_names.npy')
+    
+    # Check if model exists
+    if os.path.exists(model_path) and os.path.exists(class_names_path):
+        disease_progression_api = DiseaseProgressionAPI(
+            model_path=model_path,
+            class_names_path=class_names_path
+        )
+        print("✅ Disease Progression API loaded successfully!")
+    else:
+        print("⚠️  Disease Progression model not found. Train the model first.")
+        print(f"   Expected model at: {model_path}")
+except Exception as e:
+    print(f"⚠️  Could not load Disease Progression API: {e}")
+
+
+@app.route('/api/disease-progression/upload-day', methods=['POST'])
+def upload_day_image():
+    """Upload image for a specific day"""
+    if disease_progression_api is None:
+        return jsonify({
+            'success': False,
+            'error': 'Disease progression model not loaded. Please train the model first.'
+        }), 503
+    
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        day = data.get('day')
+        image_data = data.get('image')
+        
+        if not all([user_id, day is not None, image_data]):
+            return jsonify({
+                'success': False,
+                'error': 'Missing required fields: user_id, day, image'
+            }), 400
+        
+        result = disease_progression_api.upload_day_image(user_id, day, image_data)
+        return jsonify(result)
+    
+    except Exception as e:
+        import traceback
+        print('Exception in /api/disease-progression/upload-day:', traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'Upload failed: {str(e)}'
+        }), 500
+
+
+@app.route('/api/disease-progression/analyze', methods=['POST'])
+def analyze_progression():
+    """Analyze disease progression from uploaded images"""
+    if disease_progression_api is None:
+        return jsonify({
+            'success': False,
+            'error': 'Disease progression model not loaded. Please train the model first.'
+        }), 503
+    
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'error': 'Missing required field: user_id'
+            }), 400
+        
+        result = disease_progression_api.analyze_progression(user_id)
+        return jsonify(result)
+    
+    except Exception as e:
+        import traceback
+        print('Exception in /api/disease-progression/analyze:', traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'Analysis failed: {str(e)}'
+        }), 500
+
+
+@app.route('/api/disease-progression/status', methods=['GET'])
+def get_progression_status():
+    """Get upload status for a user"""
+    if disease_progression_api is None:
+        return jsonify({
+            'success': False,
+            'error': 'Disease progression model not loaded. Please train the model first.'
+        }), 503
+    
+    try:
+        user_id = request.args.get('user_id')
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'error': 'Missing required parameter: user_id'
+            }), 400
+        
+        result = disease_progression_api.get_status(user_id)
+        return jsonify(result)
+    
+    except Exception as e:
+        import traceback
+        print('Exception in /api/disease-progression/status:', traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'Status check failed: {str(e)}'
+        }), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)
