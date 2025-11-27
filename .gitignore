@@ -1,12 +1,172 @@
-# Ignore Python cache
+# ============================================
+# Python
+# ============================================
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Ignore virtual environments
+# ============================================
+# Virtual Environments
+# ============================================
 .venv/
 venv/
+ENV/
+env/
+.virtualenv/
 
-# Ignore Jupyter Notebook checkpoints
+# ============================================
+# Jupyter Notebook
+# ============================================
 .ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ============================================
+# ML/AI Specific
+# ============================================
+
+# Datasets (LARGE FILES - DO NOT COMMIT)
+data_ml/datasets/plant_disease/
+data_ml/datasets/*/
+*.zip
+*.tar.gz
+*.tar
+*.rar
+*.7z
+
+# Trained Models (LARGE FILES)
+data_ml/models/**/*.h5
+data_ml/models/**/*.hdf5
+data_ml/models/**/*.pkl
+data_ml/models/**/*.pth
+data_ml/models/**/*.pt
+data_ml/models/**/*.ckpt
+data_ml/models/**/*.pb
+data_ml/models/**/*.onnx
+data_ml/notebooks/disease_progression/models/
+data_ml/notebooks/*/models/
+
+# TensorBoard Logs
+data_ml/notebooks/disease_progression/logs/
+data_ml/notebooks/*/logs/
+logs/
+runs/
+tensorboard/
+
+# Training Outputs
+*.png
+*.jpg
+*.jpeg
+!README*.png
+!architecture*.png
+confusion_matrix.png
+training_history.png
+regression_plots.png
+
+# Checkpoints
+checkpoints/
+*.ckpt
+
+# ============================================
+# IDE & Editors
+# ============================================
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ============================================
+# OS Specific
+# ============================================
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+
+# ============================================
+# Environment & Secrets
+# ============================================
+.env
+.env.local
+.env.*.local
+*.env
+secrets/
+*.key
+*.pem
+kaggle.json
+
+# ============================================
+# Temporary Files
+# ============================================
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.cache/
+tmp/
+temp/
+
+# ============================================
+# Node.js (if using frontend)
+# ============================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# ============================================
+# Database
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
+
+# ============================================
+# Misc
+# ============================================
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/

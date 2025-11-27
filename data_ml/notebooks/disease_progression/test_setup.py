@@ -155,6 +155,7 @@ def test_model_build():
     print("="*50)
     
     try:
+        import tensorflow as tf
         from disease_progression_model import DiseaseProgressionModel
         
         print("Building test model...")
@@ -255,7 +256,7 @@ def main():
     results['dependencies'] = check_dependencies()
     results['gpu'] = check_gpu()
     results['directories'] = check_directories()
-    results['dataset'] = check_dataset('../../datasets/plant_disease')
+    results['dataset'] = check_dataset('../../datasets/plant_disease/PlantVillage')
     results['model_build'] = test_model_build()
     results['data_generator'] = test_data_generator()
     

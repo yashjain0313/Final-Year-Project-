@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 import cv2
+from typing import Tuple, Dict, List
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 import tensorflow as tf
@@ -76,9 +77,11 @@ class DiseaseDatasetLoader:
         for class_dir in self.dataset_path.iterdir():
             if class_dir.is_dir():
                 class_name = class_dir.name
-                for img_path in class_dir.glob('*.jpg'):
-                    image_paths.append(str(img_path))
-                    labels.append(class_name)
+                # Look for images with various extensions (case-insensitive)
+                for ext in ['*.jpg', '*.JPG', '*.jpeg', '*.JPEG', '*.png', '*.PNG']:
+                    for img_path in class_dir.glob(ext):
+                        image_paths.append(str(img_path))
+                        labels.append(class_name)
         
         print(f"Found {len(image_paths)} images across {len(set(labels))} classes")
         
@@ -413,7 +416,7 @@ def main():
     Main training pipeline
     """
     # Configuration
-    DATASET_PATH = '../../datasets/plant_disease'  # Update this path
+    DATASET_PATH = '../../datasets/plant_disease/PlantVillage/PlantVillage'  # Nested PlantVillage folder
     IMAGE_SIZE = (224, 224)
     SEQUENCE_LENGTH = 5
     BATCH_SIZE = 16
