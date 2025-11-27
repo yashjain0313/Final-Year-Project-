@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disease Progression Tracker | AgroSmart</title>
+    <link rel="stylesheet" href="style_new.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Disease Progression Specific Styles - Aligned with Main Theme */
+        body {
+            background-color: var(--bg-color);
+            padding-bottom: 80px;
+            /* For mobile nav */
+        }
+
+        .progression-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Hero Section */
+        .hero-section-progression {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            color: var(--text-color);
+            padding: 60px 40px;
+            border-radius: var(--radius-lg);
+            margin-bottom: 40px;
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section-progression h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .hero-section-progression p {
+            font-size: 1.1rem;
+            max-width: 700px;
+            margin: 0 auto 30px;
+            color: var(--text-secondary);
+        }
+
+        /* Simple Steps */
+        .steps-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .step-pill {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            color: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .step-pill i {
+            background: var(--primary-color);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        /* User Friendly Info */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .info-card {
+            background: white;
+            padding: 25px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .info-card h3 {
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Upload Section */
+        .upload-section {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 40px;
+        }
+
+        .timeline-visual {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            position: relative;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .timeline-visual::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #e0e0e0;
+            z-index: 0;
+        }
+
+        .timeline-visual-progress {
+            position: absolute;
+            top: 15px;
+            left: 0;
+            width: 0%;
+            height: 3px;
+            background: var(--primary-color);
+            z-index: 0;
+            transition: width 0.5s ease;
+        }
+
+        .day-step {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+        }
+
+        .day-circle {
+            width: 34px;
+            height: 34px;
+            background: white;
+            border: 3px solid #e0e0e0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #9e9e9e;
+            margin: 0 auto 8px;
+            transition: all 0.3s;
+        }
+
+        .day-step.active .day-circle {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .day-step.completed .day-circle {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .upload-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .upload-card {
+            background: #fafafa;
+            border: 2px dashed #e0e0e0;
+            border-radius: var(--radius-md);
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            height: 220px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-card:hover {
+            border-color: var(--primary-color);
+            background: #f1f8e9;
+        }
+
+        .upload-card.uploaded {
+            border-style: solid;
+            border-color: var(--success-color);
+            background: #e8f5e9;
+        }
+
+        .preview-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            border-radius: 10px;
+            opacity: 0;
+        }
+
+        .upload-card.uploaded .preview-img {
+            opacity: 1;
+        }
+
+        .upload-card.uploaded .card-content {
+            opacity: 0;
+        }
+
+        /* Results */
+        .results-section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .result-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .confidence-badge {
+            background: #e8f5e9;
+            color: var(--primary-color);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .metrics-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-box {
+            background: white;
+            padding: 20px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .recommendations-box {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 30px;
+            box-shadow: var(--shadow-sm);
+            border-left: 5px solid var(--primary-color);
+        }
+
+        .rec-item {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .rec-item:last-child {
+            border-bottom: none;
+        }
+
+        .rec-icon {
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            margin-top: 2px;
+        }
+
+        /* Loading */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header (Same as Main Page) -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="index_new.html" class="logo">
+                    <i class="fas fa-seedling"></i>
+                    <span>AgroSmart</span>
+                </a>
+                <nav class="desktop-nav">
+                    <a href="index_new.html">Home</a>
+                    <a href="index_new.html#crop-advisor">Advisor</a>
+                    <a href="index_new.html#disease-detection" class="active">Disease</a>
+                    <a href="index_new.html#weather">Weather</a>
+                    <a href="index_new.html#market">Market</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="progression-container">
+        <!-- Friendly Hero Section -->
+        <div class="hero-section-progression">
+            <h1>Track Disease Spread</h1>
+            <p>
+                Monitor how a disease is changing over time. Upload photos from 3 to 5 consecutive days to get a
+                personalized report and treatment plan.
+            </p>
+            <div class="steps-container">
+                <div class="step-pill">
+                    <i class="fas fa-camera"></i> Take Photos Daily
+                </div>
+                <div class="step-pill">
+                    <i class="fas fa-upload"></i> Upload Here
+                </div>
+                <div class="step-pill">
+                    <i class="fas fa-file-medical-alt"></i> Get Advice
+                </div>
+            </div>
+        </div>
+
+        <!-- User Friendly Info -->
+        <div class="info-grid">
+            <div class="info-card">
+                <h3><i class="fas fa-magic"></i> How It Works</h3>
+                <p>
+                    Our smart system looks at the changes in your plant's leaves day by day. It learns the pattern of
+                    the disease to tell you if it's getting better or worse.
+                </p>
+            </div>
+            <div class="info-card">
+                <h3><i class="fas fa-lightbulb"></i> Why Use This?</h3>
+                <p>
+                    Catching a disease early and knowing how fast it spreads helps you save your crop. We give you the
+                    right advice at the right time.
+                </p>
+            </div>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="upload-section">
+            <div class="section-header">
+                <h2>Upload Your Photos</h2>
+                <p>Please upload one photo for each day.</p>
+            </div>
+
+            <!-- Visual Timeline -->
+            <div class="timeline-visual">
+                <div class="timeline-visual-progress" id="timeline-progress"></div>
+                <div class="day-step active" id="step-1">
+                    <div class="day-circle">1</div>
+                    <div>Day 1</div>
+                </div>
+                <div class="day-step" id="step-2">
+                    <div class="day-circle">2</div>
+                    <div>Day 2</div>
+                </div>
+                <div class="day-step" id="step-3">
+                    <div class="day-circle">3</div>
+                    <div>Day 3</div>
+                </div>
+                <div class="day-step" id="step-4">
+                    <div class="day-circle">4</div>
+                    <div>Day 4</div>
+                </div>
+                <div class="day-step" id="step-5">
+                    <div class="day-circle">5</div>
+                    <div>Day 5</div>
+                </div>
+            </div>
+
+            <!-- Upload Grid -->
+            <div class="upload-grid">
+                <!-- Day 1 -->
+                <div class="upload-card" id="card-1" onclick="triggerUpload(1)">
+                    <img id="preview-1" class="preview-img">
+                    <div class="card-content">
+                        <i class="fas fa-camera" style="font-size: 2rem; color: #bdbdbd; margin-bottom: 10px;"></i>
+                        <h4>Day 1</h4>
+                        <p style="font-size: 0.8rem; color: #757575;">Start Here</p>
+                    </div>
+                    <input type="file" id="file-1" hidden accept="image/*" onchange="handleFileSelect(1)">
+                </div>
+
+                <!-- Day 2 -->
+                <div class="upload-card" id="card-2" onclick="triggerUpload(2)">
+                    <img id="preview-2" class="preview-img">
+                    <div class="card-content">
+                        <i class="fas fa-camera" style="font-size: 2rem; color: #bdbdbd; margin-bottom: 10px;"></i>
+                        <h4>Day 2</h4>
+                        <p style="font-size: 0.8rem; color: #757575;">Next Day</p>
+                    </div>
+                    <input type="file" id="file-2" hidden accept="image/*" onchange="handleFileSelect(2)">
+                </div>
+
+                <!-- Day 3 -->
+                <div class="upload-card" id="card-3" onclick="triggerUpload(3)">
+                    <img id="preview-3" class="preview-img">
+                    <div class="card-content">
+                        <i class="fas fa-camera" style="font-size: 2rem; color: #bdbdbd; margin-bottom: 10px;"></i>
+                        <h4>Day 3</h4>
+                        <p style="font-size: 0.8rem; color: #757575;">Minimum</p>
+                    </div>
+                    <input type="file" id="file-3" hidden accept="image/*" onchange="handleFileSelect(3)">
+                </div>
+
+                <!-- Day 4 -->
+                <div class="upload-card" id="card-4" onclick="triggerUpload(4)">
+                    <img id="preview-4" class="preview-img">
+                    <div class="card-content">
+                        <i class="fas fa-plus-circle" style="font-size: 2rem; color: #bdbdbd; margin-bottom: 10px;"></i>
+                        <h4>Day 4</h4>
+                        <p style="font-size: 0.8rem; color: #757575;">Optional</p>
+                    </div>
+                    <input type="file" id="file-4" hidden accept="image/*" onchange="handleFileSelect(4)">
+                </div>
+
+                <!-- Day 5 -->
+                <div class="upload-card" id="card-5" onclick="triggerUpload(5)">
+                    <img id="preview-5" class="preview-img">
+                    <div class="card-content">
+                        <i class="fas fa-plus-circle" style="font-size: 2rem; color: #bdbdbd; margin-bottom: 10px;"></i>
+                        <h4>Day 5</h4>
+                        <p style="font-size: 0.8rem; color: #757575;">Optional</p>
+                    </div>
+                    <input type="file" id="file-5" hidden accept="image/*" onchange="handleFileSelect(5)">
+                </div>
+            </div>
+
+            <div class="text-center">
+                <button class="btn btn--primary" id="analyze-btn" onclick="analyzeProgression()" disabled
+                    style="padding: 15px 40px; font-size: 1.1rem;">
+                    <i class="fas fa-search"></i> Analyze My Crop
+                </button>
+                <p style="margin-top: 15px; color: var(--text-secondary); font-size: 0.9rem;">
+                    Please upload at least 3 photos to start analysis
+                </p>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section" id="results-section">
+            <div class="section-header">
+                <h2>Health Report</h2>
+                <p>Here is what we found about your crop.</p>
+            </div>
+
+            <div class="info-card" style="text-align: center; margin-bottom: 30px;">
+                <h2 id="disease-name" style="color: var(--text-color); margin-bottom: 5px;">Analyzing...</h2>
+                <div class="confidence-badge" id="confidence-badge">High Confidence</div>
+            </div>
+
+            <div class="metrics-container">
+                <div class="metric-box">
+                    <div class="metric-value" id="severity-value">--%</div>
+                    <div style="color: var(--text-secondary);">Severity Level</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-value" id="progression-value">--</div>
+                    <div style="color: var(--text-secondary);">Spread Rate (per day)</div>
+                </div>
+            </div>
+
+            <div class="info-card" style="margin-bottom: 30px;">
+                <h3><i class="fas fa-chart-line"></i> Disease Timeline</h3>
+                <div style="height: 300px;">
+                    <canvas id="progressionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div class="recommendations-box" id="recommendations-card">
+                <h3 style="margin-bottom: 20px;">
+                    <i class="fas fa-user-md"></i> Expert Advice
+                    <span id="urgency-badge"
+                        style="float: right; font-size: 0.9rem; padding: 5px 10px; background: #ffebee; color: #c62828; border-radius: 15px;">Urgent</span>
+                </h3>
+
+                <div id="rec-list">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner" style="width: 50px; height: 50px; margin-bottom: 20px;"></div>
+        <h3 style="color: var(--primary-color);">Analyzing Your Photos...</h3>
+        <p>Please wait while we check for diseases.</p>
+    </div>
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="bottom-nav">
+        <a href="index_new.html" class="bottom-nav-item">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </a>
+        <a href="index_new.html#crop-advisor" class="bottom-nav-item">
+            <i class="fas fa-leaf"></i>
+            <span>Advisor</span>
+        </a>
+        <a href="index_new.html#disease-detection" class="bottom-nav-item active">
+            <i class="fas fa-camera"></i>
+            <span>Disease</span>
+        </a>
+        <a href="index_new.html#weather" class="bottom-nav-item">
+            <i class="fas fa-cloud-sun"></i>
+            <span>Weather</span>
+        </a>
+    </nav>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="disease-progression.js"></script>
+</body>
+
+</html>
