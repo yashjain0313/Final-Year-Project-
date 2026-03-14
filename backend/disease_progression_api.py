@@ -11,7 +11,7 @@ import os
 import numpy as np
 import cv2
 from flask import Flask, request, jsonify
-from tensorflow import keras
+# from tensorflow import keras
 import base64
 from io import BytesIO
 from PIL import Image
@@ -20,9 +20,9 @@ from datetime import datetime
 from typing import Dict, List, Tuple
 
 # Import model utilities
-import sys
-sys.path.append('../../notebooks/disease_progression')
-from disease_progression_model import GradCAMVisualizer
+# import sys
+# sys.path.append('../data_ml/notebooks/disease_progression')
+# from disease_progression_model import GradCAMVisualizer
 
 
 class DiseaseProgressionAPI:
@@ -38,6 +38,7 @@ class DiseaseProgressionAPI:
             model_path: Path to saved model
             class_names_path: Path to class names file
         """
+        from tensorflow import keras
         print(f"Loading model from {model_path}...")
         self.model = keras.models.load_model(model_path)
         self.class_names = np.load(class_names_path, allow_pickle=True)
@@ -45,6 +46,7 @@ class DiseaseProgressionAPI:
         
         # Storage for multi-day uploads
         self.user_sequences = {}  # user_id -> {day: image}
+
         
         print(f"Model loaded successfully!")
         print(f"Number of classes: {len(self.class_names)}")

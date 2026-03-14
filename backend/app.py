@@ -224,10 +224,10 @@ def get_weather():
         print('Weather API error:', traceback.format_exc())
         return jsonify({'error': f'Weather fetch failed: {str(e)}'}), 500
 
-import torch
-from torchvision import models
-import torch.nn as nn
-from torchvision import transforms
+# import torch
+# from torchvision import models
+# import torch.nn as nn
+# from torchvision import transforms
 from PIL import Image
 import json
 
@@ -242,6 +242,9 @@ def load_disease_model():
         print(f'ERROR: Disease labels file not found at {labels_path}')
         return None, None
     try:
+        import torch
+        from torchvision import models
+        import torch.nn as nn
         with open(labels_path, 'r') as f:
             class_labels = json.load(f)
         model = models.mobilenet_v3_small(pretrained=False)
