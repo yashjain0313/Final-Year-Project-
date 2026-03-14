@@ -8,7 +8,7 @@ DB_CONFIG = {
     'password': 'your_password',  # replace with your MySQL password
     'database': 'AgroSmart'       # make sure schema name matches
 }
-
+#gagsjhgjsgdmagdkagdkjad
 def get_connection():
     """
     Establish a connection to the MySQL database and return the connection object.
