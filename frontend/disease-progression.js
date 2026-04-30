@@ -2,7 +2,7 @@
 
 // State management
 const state = {
-    userId: `user_${Date.now()}`,
+    userId: localStorage.getItem('agrosmart_user_id') || 'anonymous',
     uploadedDays: new Set(),
     uploadedImages: {},
     analysisResults: null,
@@ -117,6 +117,8 @@ async function analyzeProgression() {
         
         if (result.success) {
             displayResults(result.analysis, result.recommendation);
+            // Refresh history after a successful analysis
+            loadProgressionHistory();
         } else {
             throw new Error(result.error);
         }
@@ -251,7 +253,54 @@ function getUrgencyColor(urgency, isBg) {
     }
 }
 
+// Progression History Loader
+async function loadProgressionHistory() {
+    const listEl = document.getElementById('progressionHistoryList');
+    const emptyMsg = document.getElementById('progHistoryEmptyMsg');
+    if (!state.userId || !listEl) return;
+
+    try {
+        const resp = await fetch(`/api/disease-history?user_id=${state.userId}`);
+        const data = await resp.json();
+        
+        // Filter specifically for progression scans (instant scans stay on the other page)
+        const progHistory = (data.history || []).filter(item => item.scan_type === 'progression');
+        
+        if (progHistory.length === 0) {
+            if (emptyMsg) emptyMsg.style.display = 'block';
+            return;
+        }
+        if (emptyMsg) emptyMsg.style.display = 'none';
+
+        // Clear old cards (keep emptyMsg)
+        listEl.querySelectorAll('.history-card').forEach(c => c.remove());
+
+        progHistory.forEach(item => {
+            const date = item.created_at ? new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+            const conf = item.confidence ? Math.round(item.confidence * 100) : '--';
+            const card = document.createElement('div');
+            card.className = 'history-card card';
+            card.style.cssText = 'padding: 20px; animation: fadeIn 0.3s;';
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="background: rgba(46,125,50,0.1); color: var(--primary-color); padding: 3px 10px; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">
+                        <i class="fas fa-chart-line" style="margin-right: 4px;"></i>Progression
+                    </span>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">${date}</span>
+                </div>
+                <h4 style="color: var(--text-color); margin-bottom: 6px;">${item.disease_label || 'Unknown Disease'}</h4>
+                <span style="background: #e8f5e9; color: var(--primary-color); padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: 600;">Confidence: ${conf}%</span>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px; line-height: 1.4;">${(item.description || '').substring(0, 120)}${item.description && item.description.length > 120 ? '...' : ''}</p>
+            `;
+            listEl.appendChild(card);
+        });
+    } catch (err) {
+        console.error('Failed to load progression history:', err);
+    }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Disease Progression Tracker Ready');
+    loadProgressionHistory();
 });
