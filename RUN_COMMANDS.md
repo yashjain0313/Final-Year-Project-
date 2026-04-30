@@ -58,25 +58,36 @@ python -m http.server 8000
 
 ### **Option 3: Train/Test ML Model**
 
-#### **To Train the Model:**
+#### **To Train the Models:**
+
+**1. Crop Recommendation Engine (CRE):**
 ```bash
 # Navigate to model training folder
 cd data_ml/notebooks/crop_recomendation
 
-# Step 1: Prepare dataset
-python load_dataset.py
-
-# Step 2: Train model
-python train_model.py
-
-# Step 3: Test predictions
-python predict.py
+# Train Gradient Boosting model
+python train_cre.py
 ```
 
-#### **To Test Model Directly:**
+**2. Disease Progression Detection Module (DPDM):**
+```bash
+# Navigate to disease progression folder
+cd data_ml/notebooks/disease_progression
+
+# Step 1: Generate synthetic sequence data
+python synthetic_sequence_generator.py
+
+# Step 2: Train CNN-LSTM model
+python train_dpdm.py
+
+# Step 3: Evaluate model
+python evaluate_dpdm.py
+```
+
+#### **To Test CRE Model Directly:**
 ```bash
 cd data_ml/notebooks/crop_recomendation
-python predict.py
+python predictor.py --N 90 --P 42 --K 43 --temperature 20.8 --humidity 82 --ph 6.5 --rainfall 202
 ```
 
 Then enter values when prompted:
@@ -147,17 +158,23 @@ cd backend
 python app.py
 ```
 
-### **Testing ML Model:**
+### **Testing CRE Model:**
 ```bash
 cd data_ml/notebooks/crop_recomendation
-python predict.py
+python predictor.py --N 90 --P 42 --K 43 --ph 6.5 --temperature 20 --humidity 80 --rainfall 200
 ```
 
-### **Retraining Model:**
+### **Retraining CRE Model:**
 ```bash
 cd data_ml/notebooks/crop_recomendation
-python load_dataset.py
-python train_model.py
+python train_cre.py
+```
+
+### **Retraining Disease Progression Model:**
+```bash
+cd data_ml/notebooks/disease_progression
+python synthetic_sequence_generator.py
+python train_dpdm.py
 ```
 
 ---
@@ -195,8 +212,10 @@ pip install -r requirements.txt
 
 ### **Problem: Model not loading**
 Check that these files exist:
-- `data_ml/models/crop_recommendation/crop_recommendation_model.pkl`
+- `data_ml/models/crop_recommendation/gradient_boosting_crop.pkl`
+- `data_ml/models/crop_recommendation/standard_scaler.pkl`
 - `data_ml/models/crop_recommendation/label_encoder.pkl`
+- `data_ml/notebooks/disease_progression/models/dpdm/cnn_lstm_disease_final.keras`
 
 ---
 
@@ -257,17 +276,19 @@ cd backend
 python app.py
 ```
 
-### **To Test ML Model:**
+### **To Test CRE Model:**
 ```bash
 cd data_ml/notebooks/crop_recomendation
-python predict.py
+python predictor.py --N 90 --P 42 --K 43 --ph 6.5
 ```
 
-### **To Retrain Model:**
+### **To Retrain Models:**
 ```bash
 cd data_ml/notebooks/crop_recomendation
-python load_dataset.py
-python train_model.py
+python train_cre.py
+
+cd ../disease_progression
+python train_dpdm.py
 ```
 
 ---

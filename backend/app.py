@@ -1,21 +1,91 @@
-
-import requests
 # Main Flask app for AgroSmart
 
-from flask import Flask, request, jsonify, send_from_directory
-import joblib
-import pandas as pd
-import numpy as np
 import os
+import sys
+import json
 import requests
+import numpy as np
+from flask import Flask, request, jsonify, send_from_directory
 from PIL import Image
 import torch
 import torchvision.transforms as transforms
 from torchvision import models
 import torch.nn as nn
-import json
+import uuid
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
+
+# ── Database Configuration ─────────────────────────────────────
+# PostgreSQL connection. User must set the DATABASE_URL environment variable.
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/agrosmart')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# ── User Model ────────────────────────────────────────────────
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+        
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+# Ensure tables are created
+with app.app_context():
+    try:
+        db.create_all()
+        print("Database tables created/verified.")
+    except Exception as e:
+        print(f"Warning: Could not connect to the database. Make sure PostgreSQL is running and DATABASE_URL is configured. Error: {e}")
+
+# ── Authentication Endpoints ──────────────────────────────────
+@app.route('/api/signup', methods=['POST'])
+def signup():
+    data = request.json or {}
+    email = data.get('email')
+    password = data.get('password')
+    
+    if not email or not password:
+        return jsonify({'error': 'Email and password are required'}), 400
+        
+    if User.query.filter_by(email=email).first():
+        return jsonify({'error': 'Email is already registered'}), 400
+        
+    try:
+        user = User(email=email)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({'message': 'User created successfully', 'user_id': user.id, 'email': user.email})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.json or {}
+    email = data.get('email')
+    password = data.get('password')
+    
+    user = User.query.filter_by(email=email).first()
+    if user and user.check_password(password):
+        return jsonify({'message': 'Login successful', 'user_id': user.id, 'email': user.email})
+        
+    return jsonify({'error': 'Invalid email or password'}), 401# ── Path helpers ──────────────────────────────────────────────
+BACKEND_DIR = os.path.dirname(__file__)
+ML_BASE     = os.path.join(BACKEND_DIR, '../data_ml/notebooks')
+sys.path.insert(0, os.path.join(ML_BASE, 'crop_recomendation'))
+sys.path.insert(0, os.path.join(ML_BASE, 'disease_progression'))
 
 @app.route('/')
 def serve_index():
@@ -25,47 +95,57 @@ def serve_index():
 def serve_static(path):
     return send_from_directory(app.static_folder, path)
 
-def load_model():
-    model_path = os.path.join(os.path.dirname(__file__), '../data_ml/models/crop_recommendation/crop_recommendation_model.pkl')
-    encoder_path = os.path.join(os.path.dirname(__file__), '../data_ml/models/crop_recommendation/label_encoder.pkl')
-    model = joblib.load(model_path)
-    encoder = joblib.load(encoder_path)
-    return model, encoder
-
-model, encoder = None, None
+# -- Module 1: Crop Recommendation Engine (CRE) ---------------
+# Uses Gradient Boosting + real top-K confidence (report section 4.2)
+cre_predictor = None
 try:
-    model, encoder = load_model()
-except Exception:
-    pass
+    from predictor import CREPredictor
+    cre_predictor = CREPredictor(
+        model_path   = os.path.join(BACKEND_DIR, '../data_ml/models/crop_recommendation/gradient_boosting_crop.pkl'),
+        scaler_path  = os.path.join(BACKEND_DIR, '../data_ml/models/crop_recommendation/standard_scaler.pkl'),
+        encoder_path = os.path.join(BACKEND_DIR, '../data_ml/models/crop_recommendation/label_encoder.pkl'),
+    )
+    print('[OK] CRE (Gradient Boosting) loaded.')
+except Exception as _cre_err:
+    print('[WARN] CRE not loaded:', _cre_err)
+
+# -- Module 3: Disease Progression Detection Module (DPDM) ----
+# Uses CNN-LSTM (report section 4.4)
+dpdm_predictor = None
+try:
+    from predict_dpdm import DPDMPredictor
+    _dpdm_model = os.path.join(ML_BASE, 'disease_progression/models/dpdm/cnn_lstm_disease_final.keras')
+    _dpdm_cls   = os.path.join(ML_BASE, 'disease_progression/models/dpdm/class_names.npy')
+    if os.path.exists(_dpdm_model) and os.path.exists(_dpdm_cls):
+        dpdm_predictor = DPDMPredictor(model_path=_dpdm_model, class_names_path=_dpdm_cls)
+        print('[OK] DPDM (CNN-LSTM) loaded.')
+    else:
+        print('[WARN] DPDM model not found - run train_dpdm.py first.')
+except Exception as _dpdm_err:
+    print('[WARN] DPDM not loaded:', _dpdm_err)
 
 @app.route('/api/recommend', methods=['POST'])
 def recommend():
+    """Crop recommendation using Gradient Boosting CRE (report §4.2)."""
     data = request.json
-    if model is None or encoder is None:
-        print('ERROR: Model or encoder not loaded')
-        return jsonify({'error': 'Model or encoder not loaded'}), 500
-    # Validate and print input
-    def clamp(val, minv, maxv):
-        try:
-            v = float(val)
-            return max(minv, min(maxv, v))
-        except:
-            return minv
+    if cre_predictor is None:
+        return jsonify({'error': 'CRE model not loaded. Run train_cre.py first.'}), 503
     try:
-        features = pd.DataFrame([{
-            'N': clamp(data.get('N', 0), 0, 140),
-            'P': clamp(data.get('P', 0), 5, 145),
-            'K': clamp(data.get('K', 0), 5, 205),
-            'temperature': clamp(data.get('temperature', 0), 8, 43),
-            'humidity': clamp(data.get('humidity', 0), 14, 100),
-            'ph': clamp(data.get('ph', 0), 3.5, 9.9),
-            'rainfall': clamp(data.get('rainfall', 0), 20, 300)
-        }])
-        print('Received features:', features.to_dict(orient='records'))
-        predicted_label = model.predict(features)[0]
-        print('Predicted label:', predicted_label)
-        crop_name = encoder.inverse_transform([predicted_label])[0]
-        print('Crop name:', crop_name)
+        # Get top-5 recommendations with real confidence scores
+        recs = cre_predictor.recommend_crop(
+            nitrogen    = float(data.get('N', 56)),
+            phosphorus  = float(data.get('P', 38)),
+            potassium   = float(data.get('K', 27)),
+            ph          = float(data.get('ph', 6.3)),
+            temperature = float(data.get('temperature', 25)) if data.get('temperature') else None,
+            humidity    = float(data.get('humidity', 70))    if data.get('humidity')    else None,
+            rainfall    = float(data.get('rainfall', 100))   if data.get('rainfall')    else None,
+            lat         = float(data['lat']) if data.get('lat') else None,
+            lon         = float(data['lon']) if data.get('lon') else None,
+            top_k       = 5,
+        )
+        crop_name  = recs[0]['crop']
+        confidence = round(recs[0]['confidence'] * 100, 2)
 
         # Reference crop info and market price (from frontend/app.js data)
         crop_info = {
@@ -163,24 +243,68 @@ def style():
 def appjs():
     return send_from_directory('..', 'app.js')
 
+@app.route('/api/voice-chat', methods=['POST'])
+def voice_chat():
+    data = request.json or {}
+    user_text = data.get('text')
+    location = data.get('location', 'Unknown location')
+    
+    if not user_text:
+        return jsonify({'error': 'No text provided'}), 400
+        
+    try:
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        api_key = os.environ.get('OPENROUTER_API_KEY', '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')
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        system_prompt = f"You are AgroSmart, an AI agricultural assistant. The user is located at {location}. Provide a brief, concise, and highly relevant farming or agricultural answer to the user's query. Keep it under 3 sentences."
+        
+        payload = {
+            "model": "meta-llama/llama-3.3-70b-instruct",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_text}
+            ]
+        }
+        
+        response = requests.post(url, headers=headers, json=payload, timeout=20)
+        response.raise_for_status()
+        
+        result = response.json()
+        reply_text = result['choices'][0]['message']['content']
+        
+        return jsonify({'response': reply_text})
+        
+    except Exception as e:
+        import traceback
+        print('Voice chat error:', traceback.format_exc())
+        return jsonify({'error': f'Failed to process request: {str(e)}'}), 500
 
 @app.route('/api/weather', methods=['GET'])
 def get_weather():
-    city = request.args.get('city', 'Delhi')
-    # Geocode city to lat/lon using Nominatim
-    geo_headers = {
-        "User-Agent": "SunflowerProject/1.0 (contact: your@email.com)"
-    }
-    geocode_url = f'https://nominatim.openstreetmap.org/search?format=json&q={city}'
+    lat = request.args.get('lat')
+    lon = request.args.get('lon')
+    city = request.args.get('city', 'Unknown Location')
+    
     try:
-        geo_resp = requests.get(geocode_url, headers=geo_headers, timeout=10)
-        geo_resp.raise_for_status()
-        geo_data = geo_resp.json()
-        if not geo_data:
-            return jsonify({'error': 'City not found'}), 404
-        lat = geo_data[0]['lat']
-        lon = geo_data[0]['lon']
-        # Fetch weather forecast from Open-Meteo
+        # If lat/lon not provided, geocode the city name
+        if not lat or not lon:
+            geo_headers = {
+                "User-Agent": "AgroSmartProject/1.0 (contact: test@example.com)"
+            }
+            geocode_url = f'https://nominatim.openstreetmap.org/search?format=json&q={city}'
+            geo_resp = requests.get(geocode_url, headers=geo_headers, timeout=10)
+            geo_resp.raise_for_status()
+            geo_data = geo_resp.json()
+            if not geo_data:
+                return jsonify({'error': 'City not found'}), 404
+            lat = geo_data[0]['lat']
+            lon = geo_data[0]['lon']
+            
+        # Fetch weather forecast from Open-Meteo using exact coordinates
         weather_url = (
             f'https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}'
             '&hourly=temperature_2m,relative_humidity_2m'
@@ -288,124 +412,80 @@ def detect_disease():
 
 
 # ============================================
-# DISEASE PROGRESSION DETECTION API
+# DISEASE PROGRESSION DETECTION API (DPDM)
+# CNN-LSTM — Report Section 4.4
 # ============================================
 
-# Initialize Disease Progression API
-disease_progression_api = None
-try:
-    from disease_progression_api import DiseaseProgressionAPI
-    
-    # Paths to trained model
-    model_path = os.path.join(os.path.dirname(__file__), '../data_ml/notebooks/disease_progression/models/disease_progression_final.h5')
-    class_names_path = os.path.join(os.path.dirname(__file__), '../data_ml/notebooks/disease_progression/models/class_names.npy')
-    
-    # Check if model exists
-    if os.path.exists(model_path) and os.path.exists(class_names_path):
-        disease_progression_api = DiseaseProgressionAPI(
-            model_path=model_path,
-            class_names_path=class_names_path
-        )
-        print("✅ Disease Progression API loaded successfully!")
-    else:
-        print("⚠️  Disease Progression model not found. Train the model first.")
-        print(f"   Expected model at: {model_path}")
-except Exception as e:
-    print(f"⚠️  Could not load Disease Progression API: {e}")
+# In-memory image store: user_id -> {day: np.ndarray}
+_user_sequences = {}
 
 
 @app.route('/api/disease-progression/upload-day', methods=['POST'])
 def upload_day_image():
-    """Upload image for a specific day"""
-    if disease_progression_api is None:
-        return jsonify({
-            'success': False,
-            'error': 'Disease progression model not loaded. Please train the model first.'
-        }), 503
-    
+    """Store one day's leaf image for a user session."""
+    import base64
+    from io import BytesIO
+    from datetime import datetime
+    data    = request.json or {}
+    user_id = data.get('user_id')
+    day     = data.get('day')
+    img_b64 = data.get('image')
+    if not all([user_id, day is not None, img_b64]):
+        return jsonify({'success': False, 'error': 'Missing user_id, day, or image'}), 400
     try:
-        data = request.json
-        user_id = data.get('user_id')
-        day = data.get('day')
-        image_data = data.get('image')
-        
-        if not all([user_id, day is not None, image_data]):
-            return jsonify({
-                'success': False,
-                'error': 'Missing required fields: user_id, day, image'
-            }), 400
-        
-        result = disease_progression_api.upload_day_image(user_id, day, image_data)
-        return jsonify(result)
-    
-    except Exception as e:
-        import traceback
-        print('Exception in /api/disease-progression/upload-day:', traceback.format_exc())
+        if ',' in img_b64:
+            img_b64 = img_b64.split(',')[1]
+        img_bytes = base64.b64decode(img_b64)
+        img = Image.open(BytesIO(img_bytes)).convert('RGB')
+        img_arr = np.array(img)                        # uint8 (H,W,3)
+        if user_id not in _user_sequences:
+            _user_sequences[user_id] = {}
+        _user_sequences[user_id][int(day)] = img_arr
+        days = sorted(_user_sequences[user_id].keys())
         return jsonify({
-            'success': False,
-            'error': f'Upload failed: {str(e)}'
-        }), 500
+            'success': True, 'user_id': user_id,
+            'day': day, 'days_uploaded': days,
+            'is_complete': len(days) >= 3,
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/disease-progression/analyze', methods=['POST'])
 def analyze_progression():
-    """Analyze disease progression from uploaded images"""
-    if disease_progression_api is None:
-        return jsonify({
-            'success': False,
-            'error': 'Disease progression model not loaded. Please train the model first.'
-        }), 503
-    
+    """Run CNN-LSTM inference on the stored sequence (report §4.4)."""
+    if dpdm_predictor is None:
+        return jsonify({'success': False,
+                        'error': 'DPDM model not loaded. Run train_dpdm.py first.'}), 503
+    data    = request.json or {}
+    user_id = data.get('user_id')
+    if not user_id:
+        return jsonify({'success': False, 'error': 'Missing user_id'}), 400
+    images_dict = _user_sequences.get(user_id, {})
+    if len(images_dict) < 3:
+        return jsonify({'success': False,
+                        'error': f'Need ≥3 images, got {len(images_dict)}'}), 400
     try:
-        data = request.json
-        user_id = data.get('user_id')
-        
-        if not user_id:
-            return jsonify({
-                'success': False,
-                'error': 'Missing required field: user_id'
-            }), 400
-        
-        result = disease_progression_api.analyze_progression(user_id)
+        ordered = [images_dict[d] for d in sorted(images_dict.keys())]
+        result  = dpdm_predictor.predict_from_images(ordered)
+        del _user_sequences[user_id]     # clean up
         return jsonify(result)
-    
     except Exception as e:
-        import traceback
-        print('Exception in /api/disease-progression/analyze:', traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': f'Analysis failed: {str(e)}'
-        }), 500
+        import traceback; traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/disease-progression/status', methods=['GET'])
 def get_progression_status():
-    """Get upload status for a user"""
-    if disease_progression_api is None:
-        return jsonify({
-            'success': False,
-            'error': 'Disease progression model not loaded. Please train the model first.'
-        }), 503
-    
-    try:
-        user_id = request.args.get('user_id')
-        
-        if not user_id:
-            return jsonify({
-                'success': False,
-                'error': 'Missing required parameter: user_id'
-            }), 400
-        
-        result = disease_progression_api.get_status(user_id)
-        return jsonify(result)
-    
-    except Exception as e:
-        import traceback
-        print('Exception in /api/disease-progression/status:', traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': f'Status check failed: {str(e)}'
-        }), 500
+    """Return how many days have been uploaded for a user."""
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'success': False, 'error': 'Missing user_id'}), 400
+    days = sorted(_user_sequences.get(user_id, {}).keys())
+    return jsonify({
+        'user_id': user_id, 'days_uploaded': days,
+        'is_complete': len(days) >= 3,
+    })
 
 
 if __name__ == "__main__":

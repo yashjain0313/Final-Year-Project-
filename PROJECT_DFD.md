@@ -62,8 +62,8 @@ graph TD
 
 ### 1. Crop Recommendation Flow
 - **Input**: Nitrogen, Phosphorus, Potassium, pH, Rainfall, Temperature, Humidity.
-- **Process**: Random Forest Classifier analyzes soil parameters against trained patterns.
-- **Output**: Recommended crop for maximum yield.
+- **Process**: Gradient Boosting Classifier analyzes soil parameters against trained patterns.
+- **Output**: Top 5 recommended crops with confidence percentages.
 
 ### 2. Disease Detection Flow
 - **Input**: Single leaf image.

@@ -19,10 +19,15 @@ Final-Year-Project-/
 ├── data_ml/
 │   ├── models/
 │   │   ├── crop_recommendation/
-│   │   │   ├── crop_recommendation_model.pkl    # ML Model
+│   │   │   ├── gradient_boosting_crop.pkl       # Gradient Boosting Model
+│   │   │   ├── standard_scaler.pkl              # Feature Scaler
 │   │   │   └── label_encoder.pkl                # Label Encoder
-│   │   ├── mobilenetv3_plant_disease.pth        # Disease Detection Model
+│   │   ├── mobilenetv3_plant_disease.pth        # Static Disease Detection Model
 │   │   └── class_labels.json                    # Disease Labels
+│   ├── notebooks/
+│   │   └── disease_progression/
+│   │       ├── models/dpdm/
+│   │       │   └── cnn_lstm_disease_final.keras # Disease Progression Model
 │   └── datasets/
 └── crop_recommendation_dataset.csv
 ```
@@ -51,10 +56,12 @@ pip install -r requirements.txt
 ### Step 2: Verify ML Models Exist
 
 Check that these files exist:
-- ✅ `data_ml/models/crop_recommendation/crop_recommendation_model.pkl`
+- ✅ `data_ml/models/crop_recommendation/gradient_boosting_crop.pkl`
+- ✅ `data_ml/models/crop_recommendation/standard_scaler.pkl`
 - ✅ `data_ml/models/crop_recommendation/label_encoder.pkl`
 - ✅ `data_ml/models/mobilenetv3_plant_disease.pth`
 - ✅ `data_ml/models/class_labels.json`
+- ✅ `data_ml/notebooks/disease_progression/models/dpdm/cnn_lstm_disease_final.keras`
 
 ### Step 3: Run the Backend Server
 
@@ -106,10 +113,11 @@ The Flask backend automatically serves the frontend files!
    - Clamps values to valid ranges
    - Creates feature DataFrame
 
-4. **ML Model predicts** (app.py line 57-59)
+4. **ML Model predicts** (app.py)
    ```python
-   predicted_label = model.predict(features)[0]
-   crop_name = encoder.inverse_transform([predicted_label])[0]
+   recs = cre_predictor.recommend_crop(...)
+   crop_name = recs[0]['crop']
+   confidence = recs[0]['confidence']
    ```
 
 5. **Backend returns response** (app.py line 116-127)
@@ -251,7 +259,7 @@ CORS(app)
     "trend": "+5.2%",
     "market": "Delhi"
   },
-  "confidence": 100
+  "confidence": 99.85
 }
 ```
 
@@ -296,8 +304,8 @@ CORS(app)
 ### 🔄 Data Flow
 1. User inputs soil and climate parameters
 2. Frontend validates and sends to backend
-3. Backend loads ML model (scikit-learn)
-4. Model predicts best crop
+3. Backend loads ML model (Gradient Boosting Classifier)
+4. Model predicts best crop and calculates confidence
 5. Backend enriches with crop info and market data
 6. Frontend displays beautiful recommendation card
 

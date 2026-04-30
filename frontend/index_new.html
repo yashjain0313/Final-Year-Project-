@@ -42,6 +42,19 @@
             <option value="te">తెలుగు</option>
             <option value="ta">தமிழ்</option>
           </select>
+          <button class="btn btn--primary btn--sm" id="loginBtn" onclick="showAuthModal()" style="margin-left: 10px;">Login</button>
+          <div id="userProfile" class="hidden" style="margin-left: 10px; display: flex; align-items: center; gap: 8px; position: relative; cursor: pointer;" onclick="toggleUserDropdown(event)">
+            <i class="fas fa-user-circle" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+            <span id="userEmailDisplay" style="font-weight: 600; font-size: 0.9rem; user-select: none;"></span>
+            <i class="fas fa-chevron-down" style="font-size: 0.7rem; color: var(--text-secondary);"></i>
+            
+            <div id="userDropdown" class="hidden" style="position: absolute; top: 120%; right: 0; background: white; border-radius: var(--radius-md); box-shadow: var(--shadow-md); min-width: 140px; z-index: 1000; overflow: hidden; border: 1px solid var(--border-color);">
+              <div class="dropdown-item" style="padding: 12px 15px; display: flex; align-items: center; gap: 10px; color: var(--error-color); transition: background 0.2s;" onclick="logoutUser()" onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.background='white'">
+                <i class="fas fa-sign-out-alt"></i>
+                <span style="font-weight: 500;">Logout</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -196,8 +209,7 @@
                 </div>
                 <div class="form-group">
                   <label class="form-label">Rainfall (mm)</label>
-                  <input type="number" class="form-control" id="rainfall" placeholder="20-300" min="20" max="300"
-                    required />
+                  <input type="number" class="form-control" id="rainfall" placeholder="0-300" required />
                 </div>
               </div>
 
@@ -471,6 +483,35 @@
         </p>
         <p id="voiceCommand" style="color: var(--text-secondary)">
           Try saying: "What should I grow?"
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth Modal -->
+  <div class="modal hidden" id="authModal">
+    <div class="modal-overlay" onclick="closeAuthModal()"></div>
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 id="authTitle">Login to AgroSmart</h3>
+        <button class="modal-close" onclick="closeAuthModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="authForm" onsubmit="handleAuth(event)">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="authEmail" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-control" id="authPassword" required>
+          </div>
+          <button type="submit" class="btn btn--primary" style="width: 100%; margin-top: 10px;" id="authSubmitBtn">Login</button>
+        </form>
+        <p style="text-align: center; margin-top: 15px;">
+          <a href="#" id="authToggleLink" onclick="toggleAuthMode()" style="color: var(--primary-color);">Don't have an account? Sign up</a>
         </p>
       </div>
     </div>

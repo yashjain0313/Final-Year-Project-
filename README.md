@@ -64,8 +64,9 @@ Sunflower Project/
 
 ## 🧠 Machine Learning
 
-- **Crop Recommendation:** Trained with scikit-learn on soil and climate features.
-- **Disease Detection:** MobileNetV3 deep learning model, trained on Kaggle's New Plant Diseases Dataset.
+- **Crop Recommendation Engine (CRE):** Trained with a Gradient Boosting Classifier (`scikit-learn`) on soil and climate features, achieving ~99% accuracy.
+- **Static Disease Detection:** MobileNetV3 deep learning model for single-image disease classification.
+- **Disease Progression Module (DPDM):** CNN-LSTM hybrid model (MobileNetV2 backbone + Stacked LSTM) designed to analyze a 5-day spatiotemporal sequence of leaf images to predict disease class, severity score, and progression velocity.
 - **Class Labels:** See `data_ml/models/class_labels.json` for all supported diseases.
 
 ---

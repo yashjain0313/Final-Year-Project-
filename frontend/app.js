@@ -244,8 +244,12 @@ let userLocation = {
 document.addEventListener("DOMContentLoaded", function () {
   console.log("DOM loaded, initializing app...");
   initializeApp();
-  setupDiseaseDetection();
-  requestLocationPermission();
+  checkAuthStatus();
+  
+  // Only request location if the user is already logged in
+  if (localStorage.getItem('agrosmart_user_id')) {
+    requestLocationPermission();
+  }
 });
 
 function initializeApp() {
@@ -454,6 +458,16 @@ function setupNavigation() {
 
 function navigateToSection(sectionId) {
   console.log("Navigating to section:", sectionId);
+
+  // Authentication Guard: Only allow 'home' if not logged in
+  if (sectionId !== "home") {
+    const userId = localStorage.getItem('agrosmart_user_id');
+    if (!userId) {
+      showNotification("Please login to access this feature", "error");
+      showAuthModal();
+      return; // Stop navigation
+    }
+  }
 
   // Hide all sections
   const sections = document.querySelectorAll(".section");
@@ -768,54 +782,64 @@ function displayRecommendations(recommendations) {
   console.log("Recommendations displayed successfully");
 }
 
-// Weather Dashboard
 function setupWeatherDashboard() {
   console.log("Setting up weather dashboard...");
 
   const citySelector = document.getElementById("citySelector");
   if (citySelector) {
-    // Clear existing options
-    citySelector.innerHTML = '<option value="">Select City</option>';
-    // Add city options from appData.weather_data
-    appData.weather_data.forEach((cityObj) => {
-      const option = document.createElement("option");
-      option.value = cityObj.city;
-      option.textContent = cityObj.city;
-      citySelector.appendChild(option);
-    });
-    // Remove existing listeners
-    citySelector.removeEventListener("change", handleCitySelection);
-    citySelector.addEventListener("change", handleCitySelection);
-    console.log("City selector event listener added and populated with cities");
-  } else {
-    console.error("City selector not found");
+    // Hide the dropdown as we're auto-fetching based on precise location
+    citySelector.parentElement.style.display = 'none';
   }
 }
 
-function handleCitySelection(e) {
-  const selectedCity = e.target.value;
-  console.log("City selected:", selectedCity);
-  if (selectedCity) {
-    // Fetch live weather data from backend
-    fetch(`/api/weather?city=${encodeURIComponent(selectedCity)}`)
-      .then((response) => response.json())
-      .then((weatherData) => {
-        if (weatherData.error) {
-          console.error("Weather API error:", weatherData.error);
-          alert("Weather data not available for this city.");
-          return;
-        }
-        // Pass backend data to display and chart functions
-        displayWeatherData(weatherData);
-        setTimeout(() => createWeatherChart(weatherData), 100);
-        generateWeatherAdvisories(weatherData);
-      })
-      .catch((err) => {
-        console.error("Error fetching weather:", err);
-        alert("Error fetching weather data.");
-      });
+// Global function to auto-fetch weather once location is known
+window.autoFetchWeather = function() {
+  if (!userLocation.latitude || !userLocation.longitude) return;
+
+  const weatherContent = document.getElementById("weatherContent");
+  if (weatherContent) {
+    weatherContent.classList.remove("hidden");
+    weatherContent.innerHTML = `
+      <div style="padding: 40px; text-align: center;">
+        <i class="fas fa-sun fa-spin" style="font-size: 3rem; color: #f59e0b; margin-bottom: 15px;"></i>
+        <h3 style="color: var(--text-color);">Fetching Live Weather Data...</h3>
+        <p style="color: var(--text-secondary);">Analyzing precise coordinates</p>
+      </div>
+    `;
   }
-}
+
+  const url = `/api/weather?lat=${userLocation.latitude}&lon=${userLocation.longitude}&city=${encodeURIComponent(userLocation.city || 'Your Location')}`;
+  
+  fetch(url)
+    .then((response) => response.json())
+    .then((weatherData) => {
+      if (weatherData.error) {
+        console.error("Weather API error:", weatherData.error);
+        if(weatherContent) weatherContent.innerHTML = `<div style="padding: 20px; text-align: center; color: red;">Failed to load weather data.</div>`;
+        return;
+      }
+      
+      // Re-create the HTML structure that was wiped out by the loading state
+      weatherContent.innerHTML = `
+        <div id="currentWeather"></div>
+        <div style="margin-top: 40px; height: 300px">
+          <canvas id="weatherChart"></canvas>
+        </div>
+        <div style="margin-top: 40px">
+          <h3>Farming Advisories</h3>
+          <div id="advisoryList" style="display: grid; gap: 15px; margin-top: 15px"></div>
+        </div>
+      `;
+      
+      displayWeatherData(weatherData);
+      setTimeout(() => createWeatherChart(weatherData), 100);
+      generateWeatherAdvisories(weatherData);
+    })
+    .catch((err) => {
+      console.error("Error fetching weather:", err);
+      if(weatherContent) weatherContent.innerHTML = `<div style="padding: 20px; text-align: center; color: red;">Failed to connect to weather service.</div>`;
+    });
+};
 
 function displayWeatherData(data) {
   console.log("Displaying weather data for:", data.city);
@@ -1474,37 +1498,115 @@ function setupVoiceAssistant() {
   }
 }
 
+let recognition = null;
+let currentTranscript = "";
+
 function toggleVoiceRecording() {
   const voiceCircle = document.getElementById("voiceCircle");
   const voiceStatus = document.getElementById("voiceStatus");
   const voiceCommand = document.getElementById("voiceCommand");
 
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  
+  if (!SpeechRecognition) {
+    voiceStatus.textContent = "Error";
+    voiceCommand.textContent = "Voice Assistant is not supported in your browser.";
+    return;
+  }
+
   if (!isVoiceActive) {
-    isVoiceActive = true;
-    voiceCircle.classList.add("active");
-    voiceStatus.textContent = "Listening...";
-    voiceCommand.textContent = "Speak now";
+    if (!recognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = true; // Keeps listening until manually stopped
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
 
-    setTimeout(() => {
-      const responses = [
-        "Based on your location, I recommend growing Rice or Wheat.",
-        "Current weather conditions are favorable for planting.",
-        "Market prices for Tomato are trending upward.",
-        "Your soil conditions are suitable for Cotton cultivation.",
-      ];
+      recognition.onstart = function() {
+        isVoiceActive = true;
+        currentTranscript = "";
+        voiceCircle.classList.add("active");
+        voiceCircle.style.backgroundColor = "#dc2626"; // Turn button red
+        voiceCircle.innerHTML = '<i class="fas fa-stop"></i>'; // Show Stop icon
+        voiceStatus.textContent = "Listening... (Click Stop when done)";
+        voiceCommand.textContent = "Speak now...";
+      };
 
-      const response = responses[Math.floor(Math.random() * responses.length)];
-      voiceStatus.textContent = "Response:";
-      voiceCommand.textContent = response;
+      recognition.onresult = function(event) {
+        let transcript = "";
+        for (let i = 0; i < event.results.length; ++i) {
+          transcript += event.results[i][0].transcript;
+        }
+        currentTranscript = transcript;
+        voiceCommand.textContent = `You: "${currentTranscript}"`;
+      };
 
-      voiceCircle.classList.remove("active");
-      isVoiceActive = false;
+      recognition.onerror = function(event) {
+        console.error("Speech recognition error:", event.error);
+        isVoiceActive = false;
+        voiceCircle.classList.remove("active");
+        voiceCircle.style.backgroundColor = "var(--primary-color)";
+        voiceCircle.innerHTML = '<i class="fas fa-microphone"></i>';
+        voiceStatus.textContent = "Error";
+        voiceCommand.textContent = "Could not hear you. Please try again.";
+      };
 
-      setTimeout(() => {
-        voiceStatus.textContent = "Click to start voice input";
-        voiceCommand.textContent = 'Try saying: "What crops should I grow?"';
-      }, 5000);
-    }, 3000);
+      recognition.onend = async function() {
+        isVoiceActive = false;
+        voiceCircle.classList.remove("active");
+        voiceCircle.style.backgroundColor = "var(--primary-color)";
+        voiceCircle.innerHTML = '<i class="fas fa-microphone"></i>';
+        
+        if (!currentTranscript.trim()) {
+           voiceStatus.textContent = "Click to start voice input";
+           voiceCommand.textContent = 'Try saying: "What crops should I grow?"';
+           return;
+        }
+
+        // Show interactive loading
+        voiceStatus.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing with AI...';
+        
+        try {
+          const locStr = userLocation.city ? `${userLocation.city}, ${userLocation.state}` : 'Unknown';
+          const response = await fetch('/api/voice-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: currentTranscript, location: locStr })
+          });
+          
+          if (!response.ok) throw new Error('API Error');
+          const data = await response.json();
+          if (data.error) throw new Error(data.error);
+          
+          voiceStatus.innerHTML = '<i class="fas fa-robot"></i> AgroSmart AI:';
+          voiceCommand.textContent = data.response;
+          
+        } catch (err) {
+          console.error(err);
+          voiceStatus.textContent = "Error";
+          voiceCommand.textContent = "Failed to connect to the AI Assistant.";
+        }
+        
+        // Reset after 15 seconds
+        setTimeout(() => {
+          if (!isVoiceActive) {
+            voiceStatus.textContent = "Click to start voice input";
+            voiceCommand.textContent = 'Try saying: "What crops should I grow?"';
+          }
+        }, 15000);
+      };
+    }
+    
+    // Start listening
+    try {
+      recognition.start();
+    } catch(e) {
+      console.error(e);
+    }
+  } else {
+    // If user clicks the circle while active, stop the recording!
+    if (recognition) {
+      recognition.stop(); // This instantly triggers onend, which handles sending to LLM
+    }
   }
 }
 
@@ -1609,24 +1711,23 @@ window.hideModal = hideModal;
 // ============================================
 
 function requestLocationPermission() {
-  console.log("Requesting location permission...");
+  console.log("Requesting location permission instantly...");
 
   if (!navigator.geolocation) {
     console.error("Geolocation is not supported by this browser.");
     return;
   }
 
-  setTimeout(() => {
-    navigator.geolocation.getCurrentPosition(
-      handleLocationSuccess,
-      handleLocationError,
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
-  }, 1000);
+  // Execute immediately without setTimeout
+  navigator.geolocation.getCurrentPosition(
+    handleLocationSuccess,
+    handleLocationError,
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    }
+  );
 }
 
 function setupLocationButton() {
@@ -1649,7 +1750,7 @@ function setupLocationButton() {
   }
 }
 
-function handleLocationSuccess(position) {
+async function handleLocationSuccess(position) {
   console.log("Location obtained successfully:", position);
 
   const latitude = position.coords.latitude;
@@ -1678,8 +1779,21 @@ function handleLocationSuccess(position) {
     locationBtn.style.color = "var(--color-primary)";
   }
 
-  reverseGeocode(latitude, longitude);
+  try {
+    await reverseGeocode(latitude, longitude);
+  } catch (e) {
+    console.error("Reverse geocoding failed during auto-fetch", e);
+  }
+  
   displayLocation(latitude, longitude, "Fetching address...");
+  
+  // Automatically fill the form fields using the newly acquired location
+  autoFillFromLocation();
+  
+  // Automatically fetch weather dashboard data
+  if (window.autoFetchWeather) {
+    window.autoFetchWeather();
+  }
 }
 
 function handleLocationError(error) {
@@ -1718,7 +1832,12 @@ function handleLocationError(error) {
         console.log("Using cached location");
         userLocation.latitude = location.latitude;
         userLocation.longitude = location.longitude;
-        reverseGeocode(location.latitude, location.longitude);
+        reverseGeocode(location.latitude, location.longitude).then(() => {
+          autoFillFromLocation();
+          if (window.autoFetchWeather) {
+             window.autoFetchWeather();
+          }
+        });
       }
     } catch (e) {
       console.error("Error parsing cached location:", e);
@@ -1731,7 +1850,7 @@ function reverseGeocode(latitude, longitude) {
 
   const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
 
-  fetch(url, {
+  return fetch(url, {
     headers: {
       "User-Agent": "AgroSmart/1.0 (Agricultural Platform)",
     },
@@ -1872,10 +1991,24 @@ async function fetchWeatherForLocation(latitude, longitude) {
   const data = await response.json();
   console.log("Weather data:", data);
 
+  let humidity = data.current.relative_humidity_2m || 70;
+  
+  // The ML model expects seasonal/annual rainfall (typically 40-300mm). 
+  // We can't use a single day's rainfall (like 0mm or 1mm) as it will break the prediction.
+  // We estimate seasonal rainfall based on current relative humidity to give a realistic auto-fill value.
+  let seasonalRainfall = 100;
+  if (humidity > 80) {
+    seasonalRainfall = Math.floor(Math.random() * 50) + 200; // Heavy rain zone (200-250mm)
+  } else if (humidity > 60) {
+    seasonalRainfall = Math.floor(Math.random() * 50) + 120; // Moderate rain zone (120-170mm)
+  } else {
+    seasonalRainfall = Math.floor(Math.random() * 40) + 50;  // Dry zone (50-90mm)
+  }
+
   return {
     temperature: data.current.temperature_2m || 25,
-    humidity: data.current.relative_humidity_2m || 70,
-    rainfall: data.daily.precipitation_sum[0] || 50,
+    humidity: humidity,
+    rainfall: seasonalRainfall,
   };
 }
 
@@ -1954,19 +2087,28 @@ function populateFormWithData(weatherData, soilData) {
     const options = Array.from(stateInput.options);
     const matchingOption = options.find(
       (option) =>
-        option.value.toLowerCase().includes(userLocation.state.toLowerCase()) ||
-        userLocation.state.toLowerCase().includes(option.value.toLowerCase())
+        (option.value && option.value.toLowerCase().includes(userLocation.state.toLowerCase())) ||
+        (option.value && userLocation.state.toLowerCase().includes(option.value.toLowerCase()))
     );
+    
     if (matchingOption) {
       stateInput.value = matchingOption.value;
-      // Add visual feedback for state field too
-      stateInput.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
-      stateInput.style.border = "2px solid var(--success-color)";
-      setTimeout(() => {
-        stateInput.style.backgroundColor = "";
-        stateInput.style.border = "";
-      }, 2000);
+    } else {
+      // If the state from Nominatim isn't in our hardcoded list (e.g. Delhi), create it!
+      const newOption = document.createElement("option");
+      newOption.value = userLocation.state;
+      newOption.textContent = userLocation.state;
+      stateInput.appendChild(newOption);
+      stateInput.value = userLocation.state;
     }
+
+    // Add visual feedback for state field
+    stateInput.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
+    stateInput.style.border = "2px solid var(--success-color)";
+    setTimeout(() => {
+      stateInput.style.backgroundColor = "";
+      stateInput.style.border = "";
+    }, 2000);
   }
 
   // Add visual feedback
@@ -2070,3 +2212,117 @@ function showNotification(message, type = "info") {
     }, 300);
   }, 3000);
 }
+
+// ============================================
+// AUTHENTICATION FUNCTIONALITY
+// ============================================
+
+let isSignupMode = false;
+
+function showAuthModal() {
+  document.getElementById('authModal').classList.remove('hidden');
+}
+
+function closeAuthModal() {
+  document.getElementById('authModal').classList.add('hidden');
+}
+
+function toggleAuthMode() {
+  isSignupMode = !isSignupMode;
+  document.getElementById('authTitle').textContent = isSignupMode ? "Sign Up for AgroSmart" : "Login to AgroSmart";
+  document.getElementById('authSubmitBtn').textContent = isSignupMode ? "Sign Up" : "Login";
+  document.getElementById('authToggleLink').textContent = isSignupMode ? "Already have an account? Login" : "Don't have an account? Sign up";
+}
+
+async function handleAuth(e) {
+  e.preventDefault();
+  
+  const email = document.getElementById('authEmail').value;
+  const password = document.getElementById('authPassword').value;
+  const btn = document.getElementById('authSubmitBtn');
+  const originalText = btn.textContent;
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+  
+  const endpoint = isSignupMode ? '/api/signup' : '/api/login';
+  
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Authentication failed');
+    }
+    
+    // Success!
+    localStorage.setItem('agrosmart_user_id', data.user_id);
+    localStorage.setItem('agrosmart_email', data.email);
+    
+    showNotification(data.message, 'success');
+    closeAuthModal();
+    checkAuthStatus();
+    
+    // Fetch location right after a successful login
+    requestLocationPermission();
+    
+    // Clear form
+    document.getElementById('authForm').reset();
+    
+  } catch (error) {
+    showNotification(error.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+function checkAuthStatus() {
+  const userId = localStorage.getItem('agrosmart_user_id');
+  const userEmail = localStorage.getItem('agrosmart_email');
+  
+  const loginBtn = document.getElementById('loginBtn');
+  const userProfile = document.getElementById('userProfile');
+  const userEmailDisplay = document.getElementById('userEmailDisplay');
+  
+  if (userId && userEmail && loginBtn && userProfile && userEmailDisplay) {
+    loginBtn.classList.add('hidden');
+    userProfile.classList.remove('hidden');
+    userEmailDisplay.textContent = userEmail.split('@')[0]; // Just show the name part
+  } else if (loginBtn && userProfile) {
+    loginBtn.classList.remove('hidden');
+    userProfile.classList.add('hidden');
+  }
+}
+
+function logoutUser() {
+  localStorage.removeItem('agrosmart_user_id');
+  localStorage.removeItem('agrosmart_email');
+  checkAuthStatus();
+  navigateToSection("home");
+  showNotification("Logged out successfully", "info");
+}
+
+function toggleUserDropdown(event) {
+  event.stopPropagation();
+  const dropdown = document.getElementById('userDropdown');
+  if (dropdown) {
+    dropdown.classList.toggle('hidden');
+  }
+}
+
+// Close dropdown when clicking outside
+window.addEventListener('click', function(e) {
+  const dropdown = document.getElementById('userDropdown');
+  const userProfile = document.getElementById('userProfile');
+  if (dropdown && !dropdown.classList.contains('hidden')) {
+    if (!userProfile.contains(e.target)) {
+      dropdown.classList.add('hidden');
+    }
+  }
+});
