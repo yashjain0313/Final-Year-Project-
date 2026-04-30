@@ -42,17 +42,54 @@
             <option value="te">తెలుగు</option>
             <option value="ta">தமிழ்</option>
           </select>
-          <button class="btn btn--primary btn--sm" id="loginBtn" onclick="showAuthModal()" style="margin-left: 10px;">Login</button>
-          <div id="userProfile" class="hidden" style="margin-left: 10px; display: flex; align-items: center; gap: 8px; position: relative; cursor: pointer;" onclick="toggleUserDropdown(event)">
+          <button class="btn btn--primary btn--sm" id="loginBtn" onclick="showAuthModal()"
+            style="margin-left: 10px;">Login</button>
+          <div id="userProfile" class="hidden"
+            style="margin-left: 10px; display: flex; align-items: center; gap: 8px; position: relative; cursor: pointer;"
+            onclick="toggleUserDropdown(event)">
             <i class="fas fa-user-circle" style="font-size: 1.5rem; color: var(--primary-color);"></i>
             <span id="userEmailDisplay" style="font-weight: 600; font-size: 0.9rem; user-select: none;"></span>
             <i class="fas fa-chevron-down" style="font-size: 0.7rem; color: var(--text-secondary);"></i>
-            
-            <div id="userDropdown" class="hidden" style="position: absolute; top: 120%; right: 0; background: white; border-radius: var(--radius-md); box-shadow: var(--shadow-md); min-width: 140px; z-index: 1000; overflow: hidden; border: 1px solid var(--border-color);">
-              <div class="dropdown-item" style="padding: 12px 15px; display: flex; align-items: center; gap: 10px; color: var(--error-color); transition: background 0.2s;" onclick="logoutUser()" onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.background='white'">
-                <i class="fas fa-sign-out-alt"></i>
-                <span style="font-weight: 500;">Logout</span>
+
+            <div id="userDropdown" class="hidden"
+              style="position: absolute; top: 120%; right: 0; background: white; border-radius: var(--radius-md); box-shadow: var(--shadow-md); min-width: 180px; z-index: 1000; overflow: hidden; border: 1px solid var(--border-color);">
+              <div style="padding: 6px 0;">
+                <div class="dropdown-item"
+                  style="padding: 11px 15px; display: flex; align-items: center; gap: 10px; color: var(--text-color); transition: background 0.2s; cursor: pointer;"
+                  onclick="window.open('https://ieeexplore.ieee.org/document/11468509', '_blank')"
+                  onmouseover="this.style.background='rgba(46,125,50,0.07)'" onmouseout="this.style.background='white'">
+                  <i class="fas fa-file-alt" style="color: var(--primary-color);"></i>
+                  <span style="font-weight: 500; font-size:0.95rem;">Research Paper</span>
+                </div>
+                <div class="dropdown-item"
+                  style="padding: 11px 15px; display: flex; align-items: center; gap: 10px; color: var(--text-color); transition: background 0.2s; cursor: pointer;"
+                  onclick="showPatentModal()" onmouseover="this.style.background='rgba(46,125,50,0.07)'"
+                  onmouseout="this.style.background='white'">
+                  <i class="fas fa-certificate" style="color: var(--primary-color);"></i>
+                  <span style="font-weight: 500; font-size:0.95rem;">Check Patent</span>
+                </div>
+                <div style="border-top: 1px solid var(--border-color); margin: 4px 0;"></div>
+                <div class="dropdown-item"
+                  style="padding: 11px 15px; display: flex; align-items: center; gap: 10px; color: var(--error-color); transition: background 0.2s; cursor: pointer;"
+                  onclick="logoutUser()" onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'"
+                  onmouseout="this.style.background='white'">
+                  <i class="fas fa-sign-out-alt"></i>
+                  <span style="font-weight: 500; font-size:0.95rem;">Logout</span>
+                </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Patent Lightbox Modal -->
+          <div id="patentModal" class="hidden"
+            style="position: fixed; inset: 0; background: rgba(0,0,0,0.82); z-index: 9999; display: flex; align-items: center; justify-content: center;"
+            onclick="closePatentModal()">
+            <div style="position: relative; max-width: 92vw; max-height: 90vh;" onclick="event.stopPropagation()">
+              <button onclick="closePatentModal()"
+                style="position: absolute; top: -16px; right: -16px; background: white; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 1.1rem; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: #555;"><i
+                  class="fas fa-times"></i></button>
+              <img src="/api/assets/patent.png" alt="Patent"
+                style="max-width: 88vw; max-height: 86vh; border-radius: 10px; box-shadow: 0 8px 40px rgba(0,0,0,0.5); display: block;">
             </div>
           </div>
         </div>
@@ -314,7 +351,7 @@
 
             <div class="text-center hidden" id="diseaseLoadingSpinner" style="margin-top: 20px">
               <div class="loading-spinner"></div>
-              <p style="margin-top: 10px">Analyzing image...</p>
+              <p id="diseaseLoadingText" style="margin-top: 10px; font-weight: 600; color: var(--primary-color);">Uploading to Cloud Storage...</p>
             </div>
           </form>
 
@@ -323,8 +360,17 @@
               Analysis Result
             </h3>
             <div id="diseaseLabel" style="font-size: 1.2rem; font-weight: 700; margin-bottom: 10px"></div>
+            <div id="diseaseConfidence" style="margin-bottom: 10px;"></div>
             <div id="diseaseDescription" style="color: var(--text-color); line-height: 1.6"></div>
             <div id="diseaseInfoPara"></div>
+          </div>
+        </div>
+
+        <!-- Scan History -->
+        <div id="diseaseHistorySection" style="margin-top: 40px;">
+          <h3 style="text-align: center; margin-bottom: 20px;"><i class="fas fa-history" style="margin-right: 8px;"></i>Scan History</h3>
+          <div id="diseaseHistoryList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
+            <p id="historyEmptyMsg" style="text-align: center; color: var(--text-secondary); grid-column: 1 / -1;">No scans yet. Upload a leaf image to get started.</p>
           </div>
         </div>
       </div>
@@ -508,10 +554,12 @@
             <label class="form-label">Password</label>
             <input type="password" class="form-control" id="authPassword" required>
           </div>
-          <button type="submit" class="btn btn--primary" style="width: 100%; margin-top: 10px;" id="authSubmitBtn">Login</button>
+          <button type="submit" class="btn btn--primary" style="width: 100%; margin-top: 10px;"
+            id="authSubmitBtn">Login</button>
         </form>
         <p style="text-align: center; margin-top: 15px;">
-          <a href="#" id="authToggleLink" onclick="toggleAuthMode()" style="color: var(--primary-color);">Don't have an account? Sign up</a>
+          <a href="#" id="authToggleLink" onclick="toggleAuthMode()" style="color: var(--primary-color);">Don't have an
+            account? Sign up</a>
         </p>
       </div>
     </div>

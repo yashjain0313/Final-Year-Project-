@@ -24,10 +24,14 @@ requests==2.31.0
 # WSGI Server (production)
 gunicorn==21.2.0
 
-# CORS Support (if needed for frontend-backend communication)
+# CORS Support
 flask-cors==4.0.0
 
 # Database & Authentication
 Flask-SQLAlchemy>=3.1.1
 psycopg2-binary>=2.9.9
 Werkzeug>=3.0.1
+python-dotenv>=1.0.0
+
+# AWS S3 Storage
+boto3>=1.28.0

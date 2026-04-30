@@ -278,6 +278,8 @@ function initializeApp() {
     const diseaseDescription = document.getElementById("diseaseDescription");
     const diseaseInfoPara = document.getElementById("diseaseInfoPara");
     const loadingSpinner = document.getElementById("diseaseLoadingSpinner");
+    const loadingText = document.getElementById("diseaseLoadingText");
+    const diseaseConfidence = document.getElementById("diseaseConfidence");
 
     if (diseaseImageInput) {
       diseaseImageInput.addEventListener("change", function (e) {
@@ -295,7 +297,7 @@ function initializeApp() {
     }
 
     if (diseaseForm) {
-      diseaseForm.addEventListener("submit", function (e) {
+      diseaseForm.addEventListener("submit", async function (e) {
         e.preventDefault();
         const file = diseaseImageInput.files[0];
         if (!file) {
@@ -304,128 +306,100 @@ function initializeApp() {
         }
         diseaseResult.classList.add("hidden");
         loadingSpinner.classList.remove("hidden");
+
+        // Stage 1: Uploading to S3
+        if (loadingText) loadingText.textContent = "Uploading to Cloud Storage (S3)...";
+
         const formData = new FormData();
         formData.append("image", file);
-        fetch("/api/disease", {
-          method: "POST",
-          body: formData,
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            loadingSpinner.classList.add("hidden");
-            if (data.label) {
-              diseaseLabel.textContent = data.label;
-              // Disease descriptions database
-              const diseaseDescriptions = {
-                "Apple - Apple Scab":
-                  "Apple scab is a fungal disease caused by Venturia inaequalis. It creates dark, scabby lesions on leaves and fruit, reducing yield and quality. Control by removing fallen leaves and applying fungicides in early spring.",
-                "Apple - Black Rot":
-                  "Black rot, caused by Botryosphaeria obtusa, affects apples with dark, sunken spots and fruit decay. Prune infected branches and use copper-based fungicides to prevent spread.",
-                "Apple - Cedar Apple Rust":
-                  "Cedar apple rust is a fungal disease causing yellow-orange spots on apple leaves. Remove nearby cedar trees and apply fungicides at bud break for effective control.",
-                "Apple - Healthy":
-                  "No visible symptoms of disease. Your apple plant is healthy. Continue regular care and monitoring.",
-                "Blueberry - Healthy":
-                  "No visible symptoms of disease. Your blueberry plant is healthy. Continue regular care and monitoring.",
-                "Cherry (Sour) - Powdery Mildew":
-                  "Powdery mildew appears as white powdery spots on cherry leaves and stems. Improve air circulation and use sulfur-based fungicides to manage the disease.",
-                "Cherry (Sour) - Healthy":
-                  "No visible symptoms of disease. Your cherry plant is healthy. Continue regular care and monitoring.",
-                "Corn (Maize) - Cercospora Leaf Spot / Gray Leaf Spot":
-                  "Gray leaf spot, caused by Cercospora zeae-maydis, creates rectangular gray lesions on corn leaves. Rotate crops and use resistant varieties to reduce impact.",
-                "Corn (Maize) - Common Rust":
-                  "Common rust causes reddish-brown pustules on corn leaves. Remove infected leaves and apply fungicides to control the disease.",
-                "Corn (Maize) - Northern Leaf Blight":
-                  "Northern leaf blight causes long, gray-green lesions on corn leaves. Rotate crops and use resistant varieties for management.",
-                "Corn (Maize) - Healthy":
-                  "No visible symptoms of disease. Your corn plant is healthy. Continue regular care and monitoring.",
-                "Grape - Black Rot":
-                  "Black rot, caused by Guignardia bidwellii, affects grapes with dark, sunken spots and fruit decay. Prune infected branches and use fungicides to prevent spread.",
-                "Grape - Esca (Black Measles)":
-                  "Esca, or black measles, is a complex grapevine disease causing leaf discoloration and fruit shriveling. Remove infected wood and avoid vine stress.",
-                "Grape - Leaf Blight (Isariopsis Leaf Spot)":
-                  "Isariopsis leaf spot causes brown, angular spots on grape leaves. Remove affected leaves and apply fungicides for control.",
-                "Grape - Healthy":
-                  "No visible symptoms of disease. Your grapevine is healthy. Continue regular care and monitoring.",
-                "Orange - Citrus Greening (HLB)":
-                  "Citrus greening (HLB) is a bacterial disease causing yellow shoots, misshapen fruit, and tree decline. Control psyllid vectors and remove infected trees.",
-                "Peach - Bacterial Spot":
-                  "Bacterial spot causes water-soaked lesions and leaf drop in peaches. Avoid overhead watering and use copper-based sprays for management.",
-                "Peach - Healthy":
-                  "No visible symptoms of disease. Your peach tree is healthy. Continue regular care and monitoring.",
-                "Pepper (Bell) - Bacterial Spot":
-                  "Bacterial spot leads to water-soaked lesions and leaf drop in bell peppers. Avoid overhead watering and use copper-based sprays.",
-                "Pepper (Bell) - Healthy":
-                  "No visible symptoms of disease. Your bell pepper plant is healthy. Continue regular care and monitoring.",
-                "Potato - Early Blight":
-                  "Early blight, caused by Alternaria solani, creates concentric rings on potato leaves and stems. Remove infected leaves and rotate crops regularly.",
-                "Potato - Late Blight":
-                  "Late blight, caused by Phytophthora infestans, causes water-soaked lesions and rapid plant decay in potatoes. Remove infected plants and apply fungicides promptly.",
-                "Potato - Healthy":
-                  "No visible symptoms of disease. Your potato plant is healthy. Continue regular care and monitoring.",
-                "Raspberry - Healthy":
-                  "No visible symptoms of disease. Your raspberry plant is healthy. Continue regular care and monitoring.",
-                "Soybean - Healthy":
-                  "No visible symptoms of disease. Your soybean plant is healthy. Continue regular care and monitoring.",
-                "Squash - Powdery Mildew":
-                  "Powdery mildew appears as white powdery spots on squash leaves and stems. Improve air circulation and use sulfur-based fungicides.",
-                "Strawberry - Leaf Scorch":
-                  "Leaf scorch causes reddish-brown spots and leaf drying in strawberries. Remove affected leaves and use resistant varieties.",
-                "Strawberry - Healthy":
-                  "No visible symptoms of disease. Your strawberry plant is healthy. Continue regular care and monitoring.",
-                "Tomato - Bacterial Spot":
-                  "Bacterial spot leads to water-soaked lesions and leaf drop in tomatoes. Avoid overhead watering and use copper-based sprays.",
-                "Tomato - Early Blight":
-                  "Early blight, caused by Alternaria solani, creates concentric rings on tomato leaves and fruit. Remove infected leaves and rotate crops regularly.",
-                "Tomato - Late Blight":
-                  "Late blight, caused by Phytophthora infestans, causes water-soaked lesions and rapid plant decay in tomatoes. Remove infected plants and apply fungicides promptly.",
-                "Tomato - Leaf Mold":
-                  "Leaf mold causes yellow spots and fuzzy growth on tomato leaves. Improve air circulation and use fungicides for control.",
-                "Tomato - Septoria Leaf Spot":
-                  "Septoria leaf spot causes small, dark spots with yellow halos on tomato leaves. Remove affected leaves and use fungicides.",
-                "Tomato - Spider Mites / Two-Spotted Spider Mite":
-                  "Spider mites cause stippling and webbing on tomato leaves. Spray with water and use miticides if needed.",
-                "Tomato - Target Spot":
-                  "Target spot causes circular lesions with concentric rings on tomato leaves. Remove infected leaves and apply fungicides.",
-                "Tomato - Yellow Leaf Curl Virus":
-                  "Yellow leaf curl virus causes leaf curling and yellowing in tomatoes. Control whiteflies and use virus-resistant varieties.",
-                "Tomato - Mosaic Virus":
-                  "Mosaic virus causes mottled, distorted leaves in tomatoes. Remove infected plants and control aphids.",
-                "Tomato - Healthy":
-                  "No visible symptoms of disease. Your tomato plant is healthy. Continue regular care and monitoring.",
-              };
-              // Normalize label for robust mapping
-              const normalizedLabel = (data.label || "").trim();
-              const description = diseaseDescriptions[normalizedLabel];
-              console.log(
-                "Disease label:",
-                normalizedLabel,
-                "| Description:",
-                description
-              );
-              diseaseDescription.innerHTML = `<p style='margin:0;'>${
-                description
-                  ? description
-                  : "No description available for this disease."
-              }</p>`;
-              diseaseInfoPara.textContent = "";
-              diseaseResult.classList.remove("hidden");
-            } else {
-              diseaseLabel.textContent = "No disease detected.";
-              diseaseDescription.textContent = "";
-              diseaseInfoPara.textContent = "";
-              diseaseResult.classList.remove("hidden");
+        const userId = localStorage.getItem('agrosmart_user_id') || 'anonymous';
+        formData.append("user_id", userId);
+
+        try {
+          // Stage 2: After a moment, update text to show model analysis
+          setTimeout(() => {
+            if (loadingText) loadingText.textContent = "Running MobileNetV3 Disease Model...";
+          }, 1500);
+
+          const response = await fetch("/api/disease", { method: "POST", body: formData });
+          const data = await response.json();
+
+          // Stage 3: Complete
+          if (loadingText) loadingText.textContent = "Analysis complete!";
+          setTimeout(() => loadingSpinner.classList.add("hidden"), 400);
+
+          if (data.label) {
+            diseaseLabel.textContent = data.label;
+            if (diseaseConfidence) {
+              const conf = Math.round((data.confidence || 0.85) * 100);
+              diseaseConfidence.innerHTML = `<span style="background: #e8f5e9; color: var(--primary-color); padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9rem;"><i class="fas fa-check-circle"></i> Confidence: ${conf}%</span>`;
             }
-          })
-          .catch((err) => {
-            loadingSpinner.classList.add("hidden");
-            diseaseLabel.textContent = "Error detecting disease.";
-            diseaseDescription.textContent = "";
+            diseaseDescription.innerHTML = `<p style='margin:0;'>${data.description || 'No description available.'}</p>`;
+            if (diseaseInfoPara) diseaseInfoPara.textContent = "";
             diseaseResult.classList.remove("hidden");
-            console.error("Disease detection error:", err);
-          });
+          } else if (data.error) {
+            diseaseLabel.textContent = "Detection Error";
+            diseaseDescription.textContent = data.error;
+            diseaseResult.classList.remove("hidden");
+          }
+
+          // Refresh history
+          loadDiseaseHistory();
+
+        } catch (err) {
+          loadingSpinner.classList.add("hidden");
+          diseaseLabel.textContent = "Error detecting disease.";
+          diseaseDescription.textContent = err.message || "";
+          diseaseResult.classList.remove("hidden");
+          console.error("Disease detection error:", err);
+        }
       });
     }
+  }
+}
+
+// Disease History Loader
+async function loadDiseaseHistory() {
+  const userId = localStorage.getItem('agrosmart_user_id');
+  const listEl = document.getElementById('diseaseHistoryList');
+  const emptyMsg = document.getElementById('historyEmptyMsg');
+  if (!userId || !listEl) return;
+
+  try {
+    const resp = await fetch(`/api/disease-history?user_id=${userId}`);
+    const data = await resp.json();
+    if (!data.history || data.history.length === 0) {
+      if (emptyMsg) emptyMsg.style.display = 'block';
+      return;
+    }
+    if (emptyMsg) emptyMsg.style.display = 'none';
+
+    // Clear old cards (keep emptyMsg)
+    listEl.querySelectorAll('.history-card').forEach(c => c.remove());
+
+    data.history.forEach(item => {
+      const date = item.created_at ? new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+      const conf = item.confidence ? Math.round(item.confidence * 100) : '--';
+      const typeIcon = item.scan_type === 'progression' ? 'fa-chart-line' : 'fa-camera';
+      const typeLabel = item.scan_type === 'progression' ? 'Progression' : 'Instant';
+      const card = document.createElement('div');
+      card.className = 'history-card card';
+      card.style.cssText = 'padding: 20px; animation: fadeIn 0.3s;';
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="background: rgba(46,125,50,0.1); color: var(--primary-color); padding: 3px 10px; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">
+            <i class="fas ${typeIcon}" style="margin-right: 4px;"></i>${typeLabel}
+          </span>
+          <span style="font-size: 0.8rem; color: var(--text-secondary);">${date}</span>
+        </div>
+        <h4 style="color: var(--text-color); margin-bottom: 6px;">${item.disease_label || 'Unknown'}</h4>
+        <span style="background: #e8f5e9; color: var(--primary-color); padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: 600;">Confidence: ${conf}%</span>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px; line-height: 1.4;">${(item.description || '').substring(0, 120)}${item.description && item.description.length > 120 ? '...' : ''}</p>
+      `;
+      listEl.appendChild(card);
+    });
+  } catch (err) {
+    console.error('Failed to load disease history:', err);
   }
 }
 
@@ -495,6 +469,8 @@ function navigateToSection(sectionId) {
         setupCropLibrary();
       } else if (sectionId === "weather") {
         setupWeatherDashboard();
+      } else if (sectionId === "disease-detection") {
+        loadDiseaseHistory();
       }
     }, 100);
 
@@ -2306,6 +2282,20 @@ function logoutUser() {
   checkAuthStatus();
   navigateToSection("home");
   showNotification("Logged out successfully", "info");
+}
+
+function showPatentModal() {
+  // Close the user dropdown first
+  const dropdown = document.getElementById('userDropdown');
+  if (dropdown) dropdown.classList.add('hidden');
+  // Show patent lightbox
+  const modal = document.getElementById('patentModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closePatentModal() {
+  const modal = document.getElementById('patentModal');
+  if (modal) modal.classList.add('hidden');
 }
 
 function toggleUserDropdown(event) {
