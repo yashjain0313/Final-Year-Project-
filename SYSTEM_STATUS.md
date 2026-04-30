@@ -92,13 +92,15 @@
 
 ## 📦 Components Status
 
-| Component | Status | Location |
-|-----------|--------|----------|
+| Component | Status | Location / Provider |
+|-----------|--------|---------------------|
 | Flask Backend | ✅ Running | `backend/app.py` |
-| ML Model | ✅ Loaded | `data_ml/models/crop_recommendation/` |
-| Label Encoder | ✅ Loaded | `data_ml/models/crop_recommendation/` |
-| Disease Model | ✅ Loaded | `data_ml/models/mobilenetv3_plant_disease.pth` |
-| Frontend | ✅ Served | `frontend/index_new.html` |
+| PostgreSQL DB | ✅ Connected | Neon DB |
+| AWS S3 Storage | ✅ Configured | `ap-south-1` bucket |
+| Voice Assistant | ✅ Active | OpenRouter LLM |
+| Crop Rec Engine | ⚠️ Fallback | OpenRouter LLM (Local model missing) |
+| Disease Model | ⚠️ Fallback | OpenRouter LLM (Local model missing) |
+| Frontend | ✅ Served | `http://localhost:5000` |
 | Weather API | ✅ Active | Open-Meteo + Nominatim |
 
 ---

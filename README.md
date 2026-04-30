@@ -9,27 +9,23 @@
 
 ## 🚀 Features
 
-- **AI Crop Recommendation:** Get personalized crop suggestions based on soil and climate data.
-- **Plant Disease Detection:** Upload leaf images and detect diseases using deep learning.
+- **User Authentication:** Secure login/signup system with session management powered by PostgreSQL.
+- **AI Voice Assistant:** Voice-activated agricultural LLM to answer your farming queries instantly.
+- **AI Crop Recommendation:** Get personalized crop suggestions based on soil and climate data, powered by OpenRouter LLMs.
+- **Plant Disease Detection:** Upload leaf images and detect diseases. Images are stored securely in AWS S3 and analyzed by our AI pipeline.
+- **Disease Progression Tracker:** Track crop health over multiple days to measure spread rate and severity, with a fully persisted history.
 - **Weather Dashboard:** Real-time weather and 7-day forecasts for major Indian cities.
 - **Market Prices:** View current crop prices and trends from top markets.
-- **Beautiful UI:** Modern, responsive design for desktop and mobile.
 
 ---
 
 ## 🗂️ Project Structure
 
-```
+```text
 Sunflower Project/
-├── backend/           # Flask backend (API endpoints)
+├── backend/           # Flask backend (API endpoints, SQLAlchemy models, S3 integration)
 ├── frontend/          # HTML, CSS, JS (UI)
 ├── data_ml/           # ML models, notebooks, datasets
-│   ├── models/        # Trained model files (.pth, .pkl, .json)
-│   └── notebooks/     # Jupyter notebooks for training
-├── crop_information.csv
-├── crop_recommendation_dataset.csv
-├── market_prices.csv
-├── weather_forecast.csv
 ├── requirements.txt   # Python dependencies
 └── README.md          # Project documentation
 ```
@@ -41,72 +37,61 @@ Sunflower Project/
 1. **Clone the repo:**
 
    ```bash
-   git clone https://github.com/Tejeswar001/Sunflower-Project.git
-   cd Sunflower-Project
+   git clone https://github.com/yashjain0313/Final-Year-Project-.git
+   cd Final-Year-Project-
    ```
 
-2. **Install Python dependencies:**
+2. **Configure Environment Variables (`.env`):**
+   Create a `.env` file in the root directory and add:
+   ```env
+   DATABASE_URL=postgresql://user:pass@host/db
+   OPENROUTER_API_KEY=sk-or-v1-...
+   AWS_ACCESS_KEY_ID=...
+   AWS_SECRET_ACCESS_KEY=...
+   AWS_REGION=ap-south-1
+   S3_BUCKET_NAME=your-bucket-name
+   ```
+
+3. **Install Python dependencies:**
 
    ```bash
-   pip install -r requirements.txt
+   pip install -r backend/requirements.txt
    ```
 
-3. **Run the Flask backend:**
+4. **Run the Flask backend:**
 
    ```bash
-   cd backend
-   python app.py
+   python backend/app.py
    ```
 
-4. **Open `index.html` in your browser** (or use a local server for full functionality).
+5. **Open `http://127.0.0.1:5000` in your browser** to use the application.
 
 ---
 
-## 🧠 Machine Learning
+## 🧠 AI & Machine Learning Infrastructure
 
-- **Crop Recommendation Engine (CRE):** Trained with a Gradient Boosting Classifier (`scikit-learn`) on soil and climate features, achieving ~99% accuracy.
-- **Static Disease Detection:** MobileNetV3 deep learning model for single-image disease classification.
-- **Disease Progression Module (DPDM):** CNN-LSTM hybrid model (MobileNetV2 backbone + Stacked LSTM) designed to analyze a 5-day spatiotemporal sequence of leaf images to predict disease class, severity score, and progression velocity.
-- **Class Labels:** See `data_ml/models/class_labels.json` for all supported diseases.
+- **OpenRouter LLMs:** Serves as the primary intelligence engine for the Voice Assistant, and acts as a dynamic fallback mechanism for Crop Recommendation and Disease Detection when local models are unavailable.
+- **AWS S3 Cloud Storage:** Persists user-uploaded leaf imagery securely for the Instant Disease tool and the multi-day Progression Tracker.
+- **Neon PostgreSQL:** Handles user accounts, passwords, and the `DiseaseHistory` records linking users to their S3 assets and AI diagnoses.
 
 ---
 
 ## 🌐 APIs Used
 
-- **Open-Meteo API** ([open-meteo.com](https://open-meteo.com/)) — Free weather forecast API for real-time and 7-day weather data.
-- **Nominatim Geocoding API** ([nominatim.org](https://nominatim.org/)) — Free geocoding service to convert city names to latitude/longitude.
-- **Agmarknet (Govt. of India)** ([agmarknet.gov.in](https://agmarknet.gov.in/)) — Official crop price data (used for sample/extension, not direct API).
-
----
-
-## 🌦️ Weather & Market Data
-
-- **Weather:** Powered by Open-Meteo API and Nominatim geocoding.
-- **Market Prices:** Sample data included; can be extended with real-time sources.
-
----
-
-## 📁 Notebooks & Datasets
-
-- Jupyter notebooks for model training and evaluation in `data_ml/notebooks/`
-- Datasets and model files in `data_ml/models/`
-
----
-
-## 🖥️ Frontend
-
-- Responsive UI with modern design
-- Crop advisor, weather dashboard, disease detection, and market analytics
-- Easy navigation and mobile support
+- **OpenRouter API** — Powering the Llama-3.3-70b-instruct conversational AI.
+- **Open-Meteo API** — Free weather forecast API for real-time and 7-day weather data.
+- **Nominatim Geocoding API** — Free geocoding service to convert city names to latitude/longitude.
+- **AWS S3** — For robust, cloud-based blob storage of image assets.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- Python, Flask
-- scikit-learn, PyTorch, torchvision
-- HTML, CSS, JavaScript
-- Chart.js for analytics
+- **Backend:** Python, Flask, SQLAlchemy, Boto3 (AWS)
+- **Database:** PostgreSQL (Neon DB)
+- **AI Integration:** OpenRouter (Llama-3.3-70b)
+- **Frontend:** Vanilla HTML5, CSS3, JavaScript (ES6+), Chart.js
+- **ML Frameworks (Local):** scikit-learn, PyTorch, torchvision
 
 ---
 
