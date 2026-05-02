@@ -1,0 +1,19 @@
+services:
+  # 🔹 Flask Backend
+  - type: web
+    name: flask-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+
+  # 🔹 Static Frontend
+  - type: web
+    name: frontend
+    env: static
+    rootDir: frontend
+    buildCommand: ""
+    staticPublishPath: .
