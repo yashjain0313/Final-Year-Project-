@@ -1523,7 +1523,14 @@ function toggleVoiceRecording() {
         voiceCircle.style.backgroundColor = "var(--primary-color)";
         voiceCircle.innerHTML = '<i class="fas fa-microphone"></i>';
         voiceStatus.textContent = "Error";
-        voiceCommand.textContent = "Could not hear you. Please try again.";
+        
+        if (event.error === 'not-allowed' || event.error === 'audio-capture') {
+            voiceCommand.textContent = "Microphone error or not found. Please type your query below.";
+            const fallback = document.getElementById("textInputFallback");
+            if (fallback) fallback.classList.remove("hidden");
+        } else {
+            voiceCommand.textContent = "Could not hear you. Please try again.";
+        }
       };
 
       recognition.onend = async function() {
@@ -1586,6 +1593,40 @@ function toggleVoiceRecording() {
   }
 }
 
+window.submitManualVoice = async function() {
+  const input = document.getElementById("manualVoiceInput");
+  const voiceStatus = document.getElementById("voiceStatus");
+  const voiceCommand = document.getElementById("voiceCommand");
+  
+  if (!input || !input.value.trim()) return;
+  
+  const text = input.value.trim();
+  voiceStatus.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing with AI...';
+  voiceCommand.textContent = `You: "${text}"`;
+  input.value = "";
+  
+  try {
+    const locStr = userLocation.city ? `${userLocation.city}, ${userLocation.state}` : 'Unknown';
+    const response = await fetch('/api/voice-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, location: locStr })
+    });
+    
+    if (!response.ok) throw new Error('API Error');
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    
+    voiceStatus.innerHTML = '<i class="fas fa-robot"></i> AgroSmart AI:';
+    voiceCommand.textContent = data.response;
+    
+  } catch (err) {
+    console.error(err);
+    voiceStatus.textContent = "Error";
+    voiceCommand.textContent = "Failed to connect to the AI Assistant.";
+  }
+};
+
 // Modal System
 function setupModals() {
   console.log("Setting up modals...");
@@ -1640,6 +1681,9 @@ function hideModal(modalId) {
       if (voiceStatus) voiceStatus.textContent = "Click to start voice input";
       if (voiceCommand)
         voiceCommand.textContent = 'Try saying: "What crops should I grow?"';
+        
+      const fallback = document.getElementById("textInputFallback");
+      if (fallback) fallback.classList.add("hidden");
     }
   }
 }
